@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
-import { fetchProtectedJson, postProtectedJson } from "../lib/api";
+import { fetchProtectedJson } from "../lib/api";
 import { formatCurrency } from "../lib/format";
 
 const MONTH_OPTIONS = [
@@ -31,7 +31,6 @@ function getCurrentYear() {
 
 export default function Dashboard({ token, onUnauthorized }) {
   const { currentUserRole = null } = useOutletContext();
-  const canManageOpeningBalance = currentUserRole === "owner";
   const canCreateRecords =
     currentUserRole === "owner" ||
     currentUserRole === "accountant" ||
@@ -42,9 +41,6 @@ export default function Dashboard({ token, onUnauthorized }) {
   const [yearOverview, setYearOverview] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [openingBalanceInput, setOpeningBalanceInput] = useState("");
-  const [savingOpeningBalance, setSavingOpeningBalance] = useState(false);
-  const [isOpeningBalanceEditorOpen, setIsOpeningBalanceEditorOpen] = useState(false);
 
   const selectedMonthKey = `${selectedYear}-${selectedMonthNumber}`;
 
@@ -81,7 +77,6 @@ export default function Dashboard({ token, onUnauthorized }) {
         setError("");
         setSummary(nextSummary);
         setYearOverview(nextYearOverview);
-        setOpeningBalanceInput(nextSummary.opening_balance);
       } catch (fetchError) {
         if (isActive) {
           setError(fetchError.message);
@@ -99,42 +94,6 @@ export default function Dashboard({ token, onUnauthorized }) {
       isActive = false;
     };
   }, [token, onUnauthorized, selectedMonthKey, selectedYear]);
-
-  const handleSaveOpeningBalance = async (event) => {
-    event.preventDefault();
-    setSavingOpeningBalance(true);
-
-    try {
-      const result = await postProtectedJson("/api/opening-balance/", {
-        token,
-        onUnauthorized,
-        fallbackMessage: "Failed to save opening balance.",
-        query: { month: selectedMonthKey },
-        body: { amount: openingBalanceInput || "0" },
-      });
-
-      if (!result) {
-        return;
-      }
-
-      setError("");
-      setSummary((currentSummary) =>
-        currentSummary
-          ? {
-              ...currentSummary,
-              opening_balance: result.opening_balance,
-              has_manual_opening_balance: true,
-              closing_balance:
-                Number(result.opening_balance) + Number(currentSummary.monthly_balance),
-            }
-          : currentSummary,
-      );
-    } catch (saveError) {
-      setError(saveError.message);
-    } finally {
-      setSavingOpeningBalance(false);
-    }
-  };
 
   const yearTotals =
     yearOverview?.months.reduce(
@@ -258,39 +217,7 @@ export default function Dashboard({ token, onUnauthorized }) {
               </article>
             </div>
 
-            {canManageOpeningBalance && (
-              <div className="section-actions compact-actions top-gap">
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={() => setIsOpeningBalanceEditorOpen((currentValue) => !currentValue)}
-                >
-                  {isOpeningBalanceEditorOpen ? "Hide Opening Balance" : "Set Opening Balance"}
-                </button>
-              </div>
-            )}
-
-            {canManageOpeningBalance && isOpeningBalanceEditorOpen && (
-              <section className="sub-panel opening-balance-panel compact-sub-panel">
-                <h3 className="sub-panel-title">Opening Balance</h3>
-                <form className="opening-balance-form" onSubmit={handleSaveOpeningBalance}>
-                  <label className="field-group">
-                    <span>Set Manual Opening Balance For This Month</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={openingBalanceInput}
-                      onChange={(event) => setOpeningBalanceInput(event.target.value)}
-                    />
-                  </label>
-                  <button type="submit" disabled={savingOpeningBalance}>
-                    {savingOpeningBalance ? "Saving..." : "Save Opening Balance"}
-                  </button>
-                </form>
-              </section>
-            )}
-
-            {canManageOpeningBalance && summary.has_manual_opening_balance && (
+            {summary.has_manual_opening_balance && (
               <p className="status-message subtle">Manual opening balance is active for this month.</p>
             )}
           </section>

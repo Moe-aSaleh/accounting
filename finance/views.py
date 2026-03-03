@@ -13,6 +13,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.db.models import Sum
+from django.db.models.functions import ExtractMonth, ExtractYear
 from django.db import transaction
 from django.utils import timezone
 
@@ -458,21 +459,25 @@ def summary_view(request):
 @api_view(['GET'])
 def month_overview_view(request):
     company = get_user_company(request.user)
+    monthly_income_rows = (
+        Income.objects.filter(company=company, date__year__in=MONTH_TILE_YEARS)
+        .annotate(year=ExtractYear("date"), month=ExtractMonth("date"))
+        .values("year", "month")
+        .annotate(total_income=Sum("amount"))
+    )
+    totals_by_key = {
+        (int(row["year"]), int(row["month"])): row["total_income"] or 0
+        for row in monthly_income_rows
+    }
     month_tiles = []
 
     for year in MONTH_TILE_YEARS:
         for month in range(1, 13):
-            total_income = Income.objects.filter(
-                company=company,
-                date__year=year,
-                date__month=month,
-            ).aggregate(total=Sum('amount'))['total'] or 0
-
             month_tiles.append({
                 "month_key": f"{year}-{month:02d}",
                 "label": month_name[month],
                 "year": year,
-                "total_income": total_income,
+                "total_income": totals_by_key.get((year, month), 0),
             })
 
     return Response(month_tiles)

@@ -59,6 +59,11 @@ export default function AppLayout({
     .join("") || "AC";
 
   useEffect(() => {
+    if (!showReportControls) {
+      setMonthTotals({});
+      return;
+    }
+
     let isActive = true;
 
     const loadMonthOverview = async () => {
@@ -91,7 +96,7 @@ export default function AppLayout({
     return () => {
       isActive = false;
     };
-  }, [token, onUnauthorized, monthTotalsVersion]);
+  }, [token, onUnauthorized, monthTotalsVersion, showReportControls]);
 
   useEffect(() => {
     let isActive = true;
