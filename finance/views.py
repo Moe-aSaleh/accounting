@@ -280,6 +280,31 @@ def get_computed_opening_balance(company, selected_month):
     return baseline_amount + previous_income - previous_expense - previous_salaries
 
 
+def get_period_net_change(company, start_date=None, end_date=None):
+    activity_filters = {"company": company}
+
+    if start_date is not None:
+        activity_filters["date__gte"] = start_date
+
+    if end_date is not None:
+        activity_filters["date__lt"] = end_date
+
+    total_income = (
+        Income.objects.filter(**activity_filters).aggregate(total=Sum("amount"))["total"]
+        or Decimal("0")
+    )
+    total_expense = (
+        Expense.objects.filter(**activity_filters).aggregate(total=Sum("amount"))["total"]
+        or Decimal("0")
+    )
+    total_salaries = (
+        Salary.objects.filter(**activity_filters).aggregate(total=Sum("amount"))["total"]
+        or Decimal("0")
+    )
+
+    return total_income - total_expense - total_salaries
+
+
 class IncomeViewSet(ModelViewSet):
     serializer_class = IncomeSerializer
 
@@ -487,46 +512,90 @@ def month_overview_view(request):
 def year_overview_view(request):
     company = get_user_company(request.user)
     selected_year = get_selected_year(request)
+    year_start = date(selected_year, 1, 1)
+
+    income_rows = (
+        Income.objects.filter(company=company, date__year=selected_year)
+        .annotate(month=ExtractMonth("date"))
+        .values("month")
+        .annotate(
+            total_income=Sum("amount"),
+            spare_parts_income=Sum("spare_parts_amount"),
+            labor_income=Sum("labor_amount"),
+        )
+    )
+    expense_rows = (
+        Expense.objects.filter(company=company, date__year=selected_year)
+        .annotate(month=ExtractMonth("date"))
+        .values("month")
+        .annotate(total_expense=Sum("amount"))
+    )
+    salary_rows = (
+        Salary.objects.filter(company=company, date__year=selected_year)
+        .annotate(month=ExtractMonth("date"))
+        .values("month")
+        .annotate(total_salaries=Sum("amount"))
+    )
+    manual_balance_rows = MonthlyOpeningBalance.objects.filter(
+        company=company,
+        month__year=selected_year,
+    )
+    manual_opening_by_month = {
+        row.month.month: row.amount for row in manual_balance_rows
+    }
+    income_by_month = {
+        int(row["month"]): {
+            "total_income": row["total_income"] or Decimal("0"),
+            "spare_parts_income": row["spare_parts_income"] or Decimal("0"),
+            "labor_income": row["labor_income"] or Decimal("0"),
+        }
+        for row in income_rows
+    }
+    expense_by_month = {
+        int(row["month"]): row["total_expense"] or Decimal("0") for row in expense_rows
+    }
+    salary_by_month = {
+        int(row["month"]): row["total_salaries"] or Decimal("0") for row in salary_rows
+    }
+
+    latest_manual_balance = (
+        MonthlyOpeningBalance.objects.filter(company=company, month__lt=year_start)
+        .order_by("-month")
+        .first()
+    )
+    initial_opening_balance = (
+        (latest_manual_balance.amount if latest_manual_balance else Decimal("0"))
+        + get_period_net_change(
+            company,
+            start_date=latest_manual_balance.month if latest_manual_balance else None,
+            end_date=year_start,
+        )
+    )
     months = []
+    running_closing_balance = None
 
     for month in range(1, 13):
         selected_month = date(selected_year, month, 1)
-        monthly_filters = {
-            "company": company,
-            "date__year": selected_year,
-            "date__month": month,
-        }
-        total_income = (
-            Income.objects.filter(**monthly_filters).aggregate(total=Sum("amount"))["total"]
-            or Decimal("0")
+        income_totals = income_by_month.get(
+            month,
+            {
+                "total_income": Decimal("0"),
+                "spare_parts_income": Decimal("0"),
+                "labor_income": Decimal("0"),
+            },
         )
-        spare_parts_income = (
-            Income.objects.filter(**monthly_filters).aggregate(total=Sum("spare_parts_amount"))["total"]
-            or Decimal("0")
-        )
-        labor_income = (
-            Income.objects.filter(**monthly_filters).aggregate(total=Sum("labor_amount"))["total"]
-            or Decimal("0")
-        )
-        total_expense = (
-            Expense.objects.filter(**monthly_filters).aggregate(total=Sum("amount"))["total"]
-            or Decimal("0")
-        )
-        total_salaries = (
-            Salary.objects.filter(**monthly_filters).aggregate(total=Sum("amount"))["total"]
-            or Decimal("0")
-        )
-        manual_opening_balance = MonthlyOpeningBalance.objects.filter(
-            company=company,
-            month=selected_month,
-        ).first()
-        opening_balance = (
-            manual_opening_balance.amount
-            if manual_opening_balance
-            else get_computed_opening_balance(company, selected_month)
+        total_income = income_totals["total_income"]
+        spare_parts_income = income_totals["spare_parts_income"]
+        labor_income = income_totals["labor_income"]
+        total_expense = expense_by_month.get(month, Decimal("0"))
+        total_salaries = salary_by_month.get(month, Decimal("0"))
+        opening_balance = manual_opening_by_month.get(
+            month,
+            initial_opening_balance if running_closing_balance is None else running_closing_balance,
         )
         net_profit = total_income - total_expense - total_salaries
         closing_balance = opening_balance + net_profit
+        running_closing_balance = closing_balance
 
         months.append(
             {
