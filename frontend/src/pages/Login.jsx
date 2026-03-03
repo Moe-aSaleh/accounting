@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getApiErrorMessage } from "../lib/api";
+import { buildApiUrl, getApiErrorMessage } from "../lib/api";
 
 export default function Login({ onLogin }) {
   const navigate = useNavigate();
@@ -13,7 +13,7 @@ export default function Login({ onLogin }) {
     setError("");
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/token/", {
+      const res = await fetch(buildApiUrl("/api/token/"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
