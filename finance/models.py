@@ -112,3 +112,31 @@ class MonthlyOpeningBalance(models.Model):
 
     def __str__(self):
         return f"{self.company.name} - {self.month} - {self.amount}"
+
+
+class AuditLog(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    action = models.CharField(max_length=100)
+    target_type = models.CharField(max_length=100, blank=True, default="")
+    target_id = models.CharField(max_length=100, blank=True, default="")
+    summary = models.CharField(max_length=255)
+    details = models.JSONField(default=dict, blank=True)
+    ip_address = models.CharField(max_length=64, blank=True, default="")
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.created_at:%Y-%m-%d %H:%M:%S} - {self.action}"

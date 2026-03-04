@@ -17,7 +17,7 @@ from django.db.models.functions import ExtractMonth, ExtractYear
 from django.db import transaction
 from django.utils import timezone
 
-from .models import Income, Expense, Salary, MonthlyOpeningBalance, UserProfile
+from .models import Income, Expense, Salary, MonthlyOpeningBalance, UserProfile, AuditLog
 from .serializers import (
     CompanyUserCreateSerializer,
     CompanySerializer,
@@ -69,6 +69,32 @@ class AuthRateThrottle(AnonRateThrottle):
 class SecureTokenObtainPairView(TokenObtainPairView):
     throttle_classes = (AuthRateThrottle,)
 
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        username = (request.data.get("username") or "").strip()
+        user = User.objects.filter(username=username).select_related("userprofile__company").first()
+        company = getattr(getattr(user, "userprofile", None), "company", None)
+
+        if response.status_code == 200:
+            log_audit_event(
+                "login_success",
+                request,
+                user=user,
+                company=company,
+                summary=f"Successful login for {username or 'unknown user'}.",
+            )
+        else:
+            log_audit_event(
+                "login_failed",
+                request,
+                user=user,
+                company=company,
+                summary=f"Failed login attempt for {username or 'unknown user'}.",
+                details={"status_code": response.status_code},
+            )
+
+        return response
+
 
 class SecureTokenRefreshView(TokenRefreshView):
     throttle_classes = (AuthRateThrottle,)
@@ -100,6 +126,44 @@ def require_user_role(user, *allowed_roles):
         raise PermissionDenied("You do not have permission to perform this action.")
 
     return user_role
+
+
+def get_client_ip(request):
+    forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
+
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+
+    return request.META.get("REMOTE_ADDR", "")
+
+
+def log_audit_event(
+    action,
+    request,
+    *,
+    company=None,
+    user=None,
+    target_type="",
+    target_id="",
+    summary="",
+    details=None,
+):
+    if user is None and getattr(request, "user", None) and request.user.is_authenticated:
+        user = request.user
+
+    if company is None and user is not None:
+        company = getattr(getattr(user, "userprofile", None), "company", None)
+
+    AuditLog.objects.create(
+        company=company,
+        user=user,
+        action=action,
+        target_type=target_type,
+        target_id=str(target_id) if target_id != "" else "",
+        summary=summary or action,
+        details=details or {},
+        ip_address=get_client_ip(request),
+    )
 
 
 def get_selected_month(request):
@@ -325,10 +389,19 @@ class IncomeViewSet(ModelViewSet):
             UserProfile.ROLE_STAFF,
         )
         company = get_user_company(self.request.user)
-        serializer.save(
+        instance = serializer.save(
             company=company,
             user=self.request.user,
             amount=get_income_total(serializer.validated_data),
+        )
+        log_audit_event(
+            "income_created",
+            self.request,
+            company=company,
+            target_type="income",
+            target_id=instance.id,
+            summary=f"Created income '{instance.description}'.",
+            details={"amount": str(instance.amount), "date": instance.date.isoformat()},
         )
 
     def perform_update(self, serializer):
@@ -338,7 +411,16 @@ class IncomeViewSet(ModelViewSet):
             UserProfile.ROLE_ACCOUNTANT,
             UserProfile.ROLE_STAFF,
         )
-        serializer.save(amount=get_income_total(serializer.validated_data))
+        instance = serializer.save(amount=get_income_total(serializer.validated_data))
+        log_audit_event(
+            "income_updated",
+            self.request,
+            company=instance.company,
+            target_type="income",
+            target_id=instance.id,
+            summary=f"Updated income '{instance.description}'.",
+            details={"amount": str(instance.amount), "date": instance.date.isoformat()},
+        )
 
     def perform_destroy(self, instance):
         require_user_role(
@@ -347,7 +429,20 @@ class IncomeViewSet(ModelViewSet):
             UserProfile.ROLE_ACCOUNTANT,
             UserProfile.ROLE_STAFF,
         )
+        company = instance.company
+        details = {"amount": str(instance.amount), "date": instance.date.isoformat()}
+        summary = f"Deleted income '{instance.description}'."
+        target_id = instance.id
         instance.delete()
+        log_audit_event(
+            "income_deleted",
+            self.request,
+            company=company,
+            target_type="income",
+            target_id=target_id,
+            summary=summary,
+            details=details,
+        )
 
 
 class ExpenseViewSet(ModelViewSet):
@@ -370,7 +465,16 @@ class ExpenseViewSet(ModelViewSet):
             UserProfile.ROLE_STAFF,
         )
         company = get_user_company(self.request.user)
-        serializer.save(company=company, user=self.request.user)
+        instance = serializer.save(company=company, user=self.request.user)
+        log_audit_event(
+            "expense_created",
+            self.request,
+            company=company,
+            target_type="expense",
+            target_id=instance.id,
+            summary=f"Created expense '{instance.description}'.",
+            details={"amount": str(instance.amount), "date": instance.date.isoformat()},
+        )
 
     def perform_update(self, serializer):
         require_user_role(
@@ -379,7 +483,16 @@ class ExpenseViewSet(ModelViewSet):
             UserProfile.ROLE_ACCOUNTANT,
             UserProfile.ROLE_STAFF,
         )
-        serializer.save()
+        instance = serializer.save()
+        log_audit_event(
+            "expense_updated",
+            self.request,
+            company=instance.company,
+            target_type="expense",
+            target_id=instance.id,
+            summary=f"Updated expense '{instance.description}'.",
+            details={"amount": str(instance.amount), "date": instance.date.isoformat()},
+        )
 
     def perform_destroy(self, instance):
         require_user_role(
@@ -388,7 +501,20 @@ class ExpenseViewSet(ModelViewSet):
             UserProfile.ROLE_ACCOUNTANT,
             UserProfile.ROLE_STAFF,
         )
+        company = instance.company
+        details = {"amount": str(instance.amount), "date": instance.date.isoformat()}
+        summary = f"Deleted expense '{instance.description}'."
+        target_id = instance.id
         instance.delete()
+        log_audit_event(
+            "expense_deleted",
+            self.request,
+            company=company,
+            target_type="expense",
+            target_id=target_id,
+            summary=summary,
+            details=details,
+        )
 
 
 class SalaryViewSet(ModelViewSet):
@@ -416,10 +542,19 @@ class SalaryViewSet(ModelViewSet):
             UserProfile.ROLE_ACCOUNTANT,
         )
         company = get_user_company(self.request.user)
-        serializer.save(
+        instance = serializer.save(
             company=company,
             user=self.request.user,
             amount=calculate_salary_amount(company, serializer.validated_data),
+        )
+        log_audit_event(
+            "salary_created",
+            self.request,
+            company=company,
+            target_type="salary",
+            target_id=instance.id,
+            summary=f"Created salary for '{instance.employee_name}'.",
+            details={"amount": str(instance.amount), "date": instance.date.isoformat()},
         )
 
     def perform_update(self, serializer):
@@ -429,7 +564,16 @@ class SalaryViewSet(ModelViewSet):
             UserProfile.ROLE_ACCOUNTANT,
         )
         company = get_user_company(self.request.user)
-        serializer.save(amount=calculate_salary_amount(company, serializer.validated_data))
+        instance = serializer.save(amount=calculate_salary_amount(company, serializer.validated_data))
+        log_audit_event(
+            "salary_updated",
+            self.request,
+            company=instance.company,
+            target_type="salary",
+            target_id=instance.id,
+            summary=f"Updated salary for '{instance.employee_name}'.",
+            details={"amount": str(instance.amount), "date": instance.date.isoformat()},
+        )
 
     def perform_destroy(self, instance):
         require_user_role(
@@ -437,7 +581,20 @@ class SalaryViewSet(ModelViewSet):
             UserProfile.ROLE_OWNER,
             UserProfile.ROLE_ACCOUNTANT,
         )
+        company = instance.company
+        details = {"amount": str(instance.amount), "date": instance.date.isoformat()}
+        summary = f"Deleted salary for '{instance.employee_name}'."
+        target_id = instance.id
         instance.delete()
+        log_audit_event(
+            "salary_deleted",
+            self.request,
+            company=company,
+            target_type="salary",
+            target_id=target_id,
+            summary=summary,
+            details=details,
+        )
 
 
 @api_view(['GET'])
@@ -784,6 +941,17 @@ def import_monthly_csv_view(request):
 
                 created_counts[row_group] += 1
 
+    log_audit_event(
+        "csv_imported",
+        request,
+        company=company,
+        summary="Imported data from CSV.",
+        details={
+            "imported": created_counts,
+            "months": sorted(imported_months),
+        },
+    )
+
     return Response(
         {
             "imported": created_counts,
@@ -806,6 +974,18 @@ def clear_month_view(request):
     deleted_income, _ = Income.objects.filter(**monthly_filters).delete()
     deleted_expense, _ = Expense.objects.filter(**monthly_filters).delete()
     deleted_salary, _ = Salary.objects.filter(**monthly_filters).delete()
+    log_audit_event(
+        "month_cleared",
+        request,
+        company=company,
+        summary=f"Cleared records for {selected_month.strftime('%B %Y')}.",
+        details={
+            "month": selected_month.strftime("%Y-%m"),
+            "deleted_income": deleted_income,
+            "deleted_expense": deleted_expense,
+            "deleted_salary": deleted_salary,
+        },
+    )
 
     return Response(
         {
@@ -836,6 +1016,18 @@ def set_opening_balance_view(request):
     )
     serializer.is_valid(raise_exception=True)
     serializer.save(company=company, month=selected_month)
+    log_audit_event(
+        "opening_balance_set",
+        request,
+        company=company,
+        target_type="monthly_opening_balance",
+        target_id=serializer.instance.id,
+        summary=f"Set opening balance for {selected_month.strftime('%B %Y')}.",
+        details={
+            "month": selected_month.strftime("%Y-%m"),
+            "amount": str(serializer.instance.amount),
+        },
+    )
 
     return Response(
         {
@@ -861,6 +1053,15 @@ def company_settings_view(request):
     serializer = CompanySerializer(company, data=request.data, partial=True)
     serializer.is_valid(raise_exception=True)
     serializer.save()
+    log_audit_event(
+        "company_settings_updated",
+        request,
+        company=company,
+        target_type="company",
+        target_id=company.id,
+        summary="Updated company settings.",
+        details=serializer.validated_data,
+    )
     return Response(serializer.data)
 
 
@@ -888,6 +1089,15 @@ def update_user_role_view(request, profile_id):
     serializer = UserProfileRoleSerializer(profile, data=request.data, partial=True)
     serializer.is_valid(raise_exception=True)
     serializer.save()
+    log_audit_event(
+        "user_role_updated",
+        request,
+        company=company,
+        target_type="user_profile",
+        target_id=profile.id,
+        summary=f"Updated role for '{profile.user.username}'.",
+        details={"role": profile.role},
+    )
     return Response(serializer.data)
 
 
@@ -908,5 +1118,14 @@ def create_company_user_view(request):
             company=company,
             role=serializer.validated_data["role"],
         )
+    log_audit_event(
+        "user_created",
+        request,
+        company=company,
+        target_type="user_profile",
+        target_id=profile.id,
+        summary=f"Created user '{user.username}'.",
+        details={"role": profile.role},
+    )
 
     return Response(UserProfileRoleSerializer(profile).data, status=201)
