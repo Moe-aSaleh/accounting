@@ -1212,6 +1212,39 @@
   align-items: center;
 }
 
+@media (max-width: 960px) {
+  .settings-form {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-user-form {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-user-submit {
+    display: block;
+  }
+
+  .settings-user-submit button {
+    width: 100%;
+  }
+
+  .user-role-row {
+    grid-template-columns: 1fr;
+  }
+
+  .user-role-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .user-role-actions select,
+  .user-role-actions button {
+    flex: 1 1 180px;
+    min-width: 0;
+  }
+}
+
 .stat-card {
   padding: 12px 14px;
   border-radius: 10px;
@@ -1344,15 +1377,26 @@
   }
 
   .month-panel-header {
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
   }
 
   .month-current {
-    grid-column: span 2;
-    order: -1;
+    order: 1;
+    flex: 1 1 100%;
   }
 
-  .month-toggle-button {
+  .month-panel-header > .month-nav-button {
+    order: 2;
+    flex: 1 1 calc(50% - 5px);
+    min-width: 0;
+    width: 100%;
+  }
+
+  .month-panel-header > .month-toggle-button {
+    order: 3;
     width: 100%;
     min-width: 0;
   }
@@ -1449,14 +1493,27 @@
     justify-content: space-between;
   }
 
-  .pagination-bar,
-  .pagination-actions {
-    align-items: stretch;
+  .pagination-bar {
+    align-items: center;
     flex-direction: column;
+  }
+
+  .pagination-actions {
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    flex-direction: row;
+    flex-wrap: wrap;
   }
 
   .pagination-page {
     min-width: 0;
+  }
+
+  .pagination-actions .record-action-button,
+  .pagination-actions button {
+    flex: 1 1 130px;
+    max-width: 170px;
   }
 
   .dashboard-topbar,
