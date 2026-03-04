@@ -20,6 +20,7 @@ export default function AppLayout({
 }) {
   const location = useLocation();
   const [isMonthPanelOpen, setIsMonthPanelOpen] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [monthTotals, setMonthTotals] = useState({});
   const [companySettings, setCompanySettings] = useState(null);
   const [importMessage, setImportMessage] = useState("");
@@ -57,6 +58,39 @@ export default function AppLayout({
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() || "")
     .join("") || "AC";
+
+  useEffect(() => {
+    setIsMobileNavOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!isMobileNavOpen) {
+      return undefined;
+    }
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setIsMobileNavOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [isMobileNavOpen]);
+
+  useEffect(() => {
+    if (!isMobileNavOpen) {
+      document.body.style.removeProperty("overflow");
+      return;
+    }
+
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.removeProperty("overflow");
+    };
+  }, [isMobileNavOpen]);
 
   useEffect(() => {
     if (!showReportControls) {
@@ -234,7 +268,13 @@ export default function AppLayout({
 
   return (
     <div className="app-shell">
-      <aside className="app-sidebar">
+      <div
+        className={isMobileNavOpen ? "app-mobile-nav-overlay open" : "app-mobile-nav-overlay"}
+        onClick={() => setIsMobileNavOpen(false)}
+        aria-hidden={!isMobileNavOpen}
+      />
+
+      <aside className={isMobileNavOpen ? "app-sidebar open" : "app-sidebar"}>
         <div className="app-sidebar-brand">
           <span className="app-sidebar-badge">
             {companySettings?.logo_url ? (
@@ -251,6 +291,14 @@ export default function AppLayout({
             <p className="app-eyebrow">{companyName}</p>
             <h1 className="app-title">Workspace</h1>
           </div>
+          <button
+            type="button"
+            className="mobile-nav-close"
+            aria-label="Close navigation menu"
+            onClick={() => setIsMobileNavOpen(false)}
+          >
+            ×
+          </button>
         </div>
 
         <nav className="app-nav" aria-label="Primary">
@@ -289,6 +337,15 @@ export default function AppLayout({
 
       <div className="app-main">
         <header className="app-header">
+          <button
+            type="button"
+            className="mobile-nav-toggle"
+            aria-label={isMobileNavOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={isMobileNavOpen}
+            onClick={() => setIsMobileNavOpen((current) => !current)}
+          >
+            ☰
+          </button>
           <div>
             <p className="app-eyebrow">Workspace</p>
             <h2 className="app-section-title">{routeTitle}</h2>
