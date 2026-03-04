@@ -7,10 +7,12 @@ export default function Login({ onLogin }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
+    setSubmitting(true);
 
     try {
       const res = await fetch(buildApiUrl("/api/token/"), {
@@ -39,6 +41,8 @@ export default function Login({ onLogin }) {
       }
     } catch {
       setError("Login failed");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -58,7 +62,16 @@ export default function Login({ onLogin }) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          <button type="submit">Login</button>
+          <button type="submit" disabled={submitting}>
+            {submitting ? (
+              <>
+                <span className="button-spinner" aria-hidden="true" />
+                <span>Signing in...</span>
+              </>
+            ) : (
+              "Login"
+            )}
+          </button>
         </form>
         {error && <p className="status-message error">{error}</p>}
       </div>

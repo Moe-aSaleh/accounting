@@ -179,7 +179,14 @@ export default function SalaryForm({
 
         <div className="record-form-actions">
           <button type="submit" disabled={submitting}>
-            {submitting ? "Saving..." : submitLabel}
+            {submitting ? (
+              <>
+                <span className="button-spinner" aria-hidden="true" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              submitLabel
+            )}
           </button>
           {onCancel && (
             <button type="button" className="secondary-button" onClick={onCancel}>

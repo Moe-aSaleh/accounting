@@ -8,7 +8,7 @@ from rest_framework.viewsets import ModelViewSet
 from rest_framework.decorators import api_view
 from rest_framework.decorators import parser_classes
 from rest_framework.response import Response
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.exceptions import APIException, PermissionDenied, ValidationError
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
@@ -70,10 +70,22 @@ class SecureTokenObtainPairView(TokenObtainPairView):
     throttle_classes = (AuthRateThrottle,)
 
     def post(self, request, *args, **kwargs):
-        response = super().post(request, *args, **kwargs)
         username = (request.data.get("username") or "").strip()
         user = User.objects.filter(username=username).select_related("userprofile__company").first()
         company = getattr(getattr(user, "userprofile", None), "company", None)
+
+        try:
+            response = super().post(request, *args, **kwargs)
+        except APIException as exc:
+            log_audit_event(
+                "login_failed",
+                request,
+                user=user,
+                company=company,
+                summary=f"Failed login attempt for {username or 'unknown user'}.",
+                details={"status_code": getattr(exc, "status_code", 400)},
+            )
+            raise
 
         if response.status_code == 200:
             log_audit_event(
