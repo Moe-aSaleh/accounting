@@ -40,7 +40,9 @@ export default function Dashboard({ token, onUnauthorized }) {
   const [summary, setSummary] = useState(null);
   const [yearOverview, setYearOverview] = useState(null);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [yearError, setYearError] = useState("");
+  const [loadingSummary, setLoadingSummary] = useState(true);
+  const [loadingYear, setLoadingYear] = useState(true);
 
   const selectedMonthKey = `${selectedYear}-${selectedMonthNumber}`;
 
@@ -51,49 +53,84 @@ export default function Dashboard({ token, onUnauthorized }) {
 
     let isActive = true;
 
-    const loadDashboard = async () => {
-      setLoading(true);
+    const loadSummary = async () => {
+      setLoadingSummary(true);
 
       try {
-        const [nextSummary, nextYearOverview] = await Promise.all([
-          fetchProtectedJson("/api/summary/", {
-            token,
-            onUnauthorized,
-            fallbackMessage: "Failed to load dashboard month data.",
-            query: { month: selectedMonthKey },
-          }),
-          fetchProtectedJson("/api/year-overview/", {
-            token,
-            onUnauthorized,
-            fallbackMessage: "Failed to load dashboard year data.",
-            query: { year: selectedYear },
-          }),
-        ]);
+        const nextSummary = await fetchProtectedJson("/api/summary/", {
+          token,
+          onUnauthorized,
+          fallbackMessage: "Failed to load dashboard month data.",
+          query: { month: selectedMonthKey },
+        });
 
-        if (!isActive || nextSummary === null || nextYearOverview === null) {
+        if (!isActive || nextSummary === null) {
           return;
         }
 
         setError("");
         setSummary(nextSummary);
-        setYearOverview(nextYearOverview);
       } catch (fetchError) {
         if (isActive) {
           setError(fetchError.message);
+          setSummary(null);
         }
       } finally {
         if (isActive) {
-          setLoading(false);
+          setLoadingSummary(false);
         }
       }
     };
 
-    loadDashboard();
+    loadSummary();
 
     return () => {
       isActive = false;
     };
-  }, [token, onUnauthorized, selectedMonthKey, selectedYear]);
+  }, [token, onUnauthorized, selectedMonthKey]);
+
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+
+    let isActive = true;
+
+    const loadYearOverview = async () => {
+      setLoadingYear(true);
+
+      try {
+        const nextYearOverview = await fetchProtectedJson("/api/year-overview/", {
+          token,
+          onUnauthorized,
+          fallbackMessage: "Failed to load dashboard year data.",
+          query: { year: selectedYear },
+        });
+
+        if (!isActive || nextYearOverview === null) {
+          return;
+        }
+
+        setYearError("");
+        setYearOverview(nextYearOverview);
+      } catch (fetchError) {
+        if (isActive) {
+          setYearError(fetchError.message);
+          setYearOverview(null);
+        }
+      } finally {
+        if (isActive) {
+          setLoadingYear(false);
+        }
+      }
+    };
+
+    loadYearOverview();
+
+    return () => {
+      isActive = false;
+    };
+  }, [token, onUnauthorized, selectedYear]);
 
   const yearTotals =
     yearOverview?.months.reduce(
@@ -172,9 +209,9 @@ export default function Dashboard({ token, onUnauthorized }) {
 
       {error && <p className="status-message error">{error}</p>}
 
-      {loading ? (
+      {loadingSummary ? (
         <p className="status-message">Loading...</p>
-      ) : summary && yearOverview ? (
+      ) : summary ? (
         <div className="dashboard-dual-grid">
           <section className="sub-panel dashboard-side-panel">
             <div className="chart-panel-header">
@@ -225,77 +262,90 @@ export default function Dashboard({ token, onUnauthorized }) {
           <section className="sub-panel dashboard-side-panel">
             <div className="chart-panel-header">
               <h3 className="sub-panel-title">Selected Year</h3>
-              <span className="chart-panel-meta">{yearOverview.year}</span>
+              <span className="chart-panel-meta">{selectedYear}</span>
             </div>
 
-            <div className="summary-grid dashboard-year-grid">
-              <article className="stat-card">
-                <span className="stat-label">Year Income</span>
-                <strong>{formatCurrency(yearTotals.income)}</strong>
-              </article>
-              <article className="stat-card">
-                <span className="stat-label">Year Expenses</span>
-                <strong>{formatCurrency(yearTotals.expenses)}</strong>
-              </article>
-              <article className="stat-card">
-                <span className="stat-label">Year Salaries</span>
-                <strong>{formatCurrency(yearTotals.salaries)}</strong>
-              </article>
-              <article className="stat-card highlight">
-                <span className="stat-label">Year Net Profit</span>
-                <strong>{formatCurrency(yearTotals.netProfit)}</strong>
-              </article>
-            </div>
+            {yearError && <p className="status-message error">{yearError}</p>}
 
-            <section className="sub-panel compact-sub-panel top-gap">
-              <div className="chart-panel-header">
-                <h3 className="sub-panel-title">Net Profit Trend</h3>
-                <span className="chart-panel-meta">{yearOverview.year}</span>
-              </div>
+            {loadingYear ? (
+              <p className="status-message">Loading year overview...</p>
+            ) : yearOverview ? (
+              <>
+                <div className="summary-grid dashboard-year-grid">
+                  <article className="stat-card">
+                    <span className="stat-label">Year Income</span>
+                    <strong>{formatCurrency(yearTotals.income)}</strong>
+                  </article>
+                  <article className="stat-card">
+                    <span className="stat-label">Year Expenses</span>
+                    <strong>{formatCurrency(yearTotals.expenses)}</strong>
+                  </article>
+                  <article className="stat-card">
+                    <span className="stat-label">Year Salaries</span>
+                    <strong>{formatCurrency(yearTotals.salaries)}</strong>
+                  </article>
+                  <article className="stat-card highlight">
+                    <span className="stat-label">Year Net Profit</span>
+                    <strong>{formatCurrency(yearTotals.netProfit)}</strong>
+                  </article>
+                </div>
 
-              <div className="year-mini-chart">
-                {yearOverview.months.map((month) => {
-                  const value = Number(month.net_profit || 0);
-                  const heightPercent = Math.max(
-                    (Math.abs(value) / highestNetProfit) * 100,
-                    value !== 0 ? 6 : 0,
-                  );
+                <section className="sub-panel compact-sub-panel top-gap">
+                  <div className="chart-panel-header">
+                    <h3 className="sub-panel-title">Net Profit Trend</h3>
+                    <span className="chart-panel-meta">{yearOverview.year}</span>
+                  </div>
 
-                  return (
-                    <div key={month.month_key} className="year-mini-bar-group">
-                      <div className="year-mini-track" title={`${month.month}: ${formatCurrency(value)}`}>
-                        <div
-                          className={value >= 0 ? "year-mini-bar positive" : "year-mini-bar negative"}
-                          style={{ height: `${heightPercent}%` }}
-                        />
-                      </div>
-                      <span>{month.month.slice(0, 3)}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
+                  <div className="year-mini-chart">
+                    {yearOverview.months.map((month) => {
+                      const value = Number(month.net_profit || 0);
+                      const heightPercent = Math.max(
+                        (Math.abs(value) / highestNetProfit) * 100,
+                        value !== 0 ? 6 : 0,
+                      );
 
-            <div className="report-table-wrap top-gap">
-              <table className="report-table">
-                <thead>
-                  <tr>
-                    <th>Month</th>
-                    <th>Income</th>
-                    <th>Net Profit</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {yearOverview.months.map((month) => (
-                    <tr key={month.month_key}>
-                      <td>{month.month}</td>
-                      <td>{formatCurrency(month.total_income)}</td>
-                      <td>{formatCurrency(month.net_profit)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      return (
+                        <div key={month.month_key} className="year-mini-bar-group">
+                          <div
+                            className="year-mini-track"
+                            title={`${month.month}: ${formatCurrency(value)}`}
+                          >
+                            <div
+                              className={value >= 0 ? "year-mini-bar positive" : "year-mini-bar negative"}
+                              style={{ height: `${heightPercent}%` }}
+                            />
+                          </div>
+                          <span>{month.month.slice(0, 3)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+
+                <div className="report-table-wrap top-gap">
+                  <table className="report-table">
+                    <thead>
+                      <tr>
+                        <th>Month</th>
+                        <th>Income</th>
+                        <th>Net Profit</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {yearOverview.months.map((month) => (
+                        <tr key={month.month_key}>
+                          <td>{month.month}</td>
+                          <td>{formatCurrency(month.total_income)}</td>
+                          <td>{formatCurrency(month.net_profit)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            ) : (
+              <p className="status-message">No year data available.</p>
+            )}
           </section>
         </div>
       ) : (
