@@ -592,10 +592,12 @@
 
 .income-table-header {
   grid-template-columns: minmax(120px, 1.1fr) minmax(180px, 1.6fr) minmax(90px, 0.7fr) minmax(180px, 1fr);
+  min-width: 680px;
 }
 
 .simple-table-header {
   grid-template-columns: minmax(120px, 1.1fr) minmax(170px, 1.4fr) minmax(90px, 0.7fr) minmax(180px, 1fr);
+  min-width: 640px;
 }
 
 .record-list li {
@@ -614,11 +616,13 @@
 .income-record-row {
   grid-template-columns: minmax(120px, 1.1fr) minmax(180px, 1.6fr) minmax(90px, 0.7fr) minmax(180px, 1fr);
   align-items: center;
+  min-width: 680px;
 }
 
 .simple-record-row {
   grid-template-columns: minmax(120px, 1.1fr) minmax(170px, 1.4fr) minmax(90px, 0.7fr) minmax(180px, 1fr);
   align-items: center;
+  min-width: 640px;
 }
 
 .record-cell {
@@ -1475,22 +1479,13 @@
   }
 
   .record-table-header {
-    display: none;
-  }
-
-  .income-record-row,
-  .simple-record-row {
-    grid-template-columns: 1fr;
-  }
-
-  .record-amount-cell {
-    justify-content: flex-start;
+    display: grid;
   }
 
   .record-actions {
     width: 100%;
     flex-wrap: nowrap;
-    justify-content: space-between;
+    justify-content: flex-end;
   }
 
   .pagination-bar {
@@ -1500,20 +1495,21 @@
 
   .pagination-actions {
     width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center;
-    justify-content: center;
-    flex-direction: row;
-    flex-wrap: wrap;
+    gap: 8px;
   }
 
   .pagination-page {
     min-width: 0;
+    text-align: center;
+    white-space: nowrap;
   }
 
-  .pagination-actions .record-action-button,
   .pagination-actions button {
-    flex: 1 1 130px;
-    max-width: 170px;
+    width: 100%;
+    max-width: none;
   }
 
   .dashboard-topbar,
@@ -1522,6 +1518,20 @@
   .user-role-actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .user-role-actions {
+    align-items: center;
+    flex-direction: row;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .user-role-actions select,
+  .user-role-actions button {
+    flex: 1 1 140px;
+    min-height: 44px;
+    margin-top: 0;
   }
 
   .empty-state-panel {
