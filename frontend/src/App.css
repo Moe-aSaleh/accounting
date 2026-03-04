@@ -519,6 +519,34 @@
   color: #0f766e;
 }
 
+.empty-state-panel {
+  margin-top: 12px;
+  padding: 18px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.empty-state-panel h4 {
+  margin: 0;
+  font-size: 1rem;
+  color: #0f172a;
+}
+
+.empty-state-panel p {
+  margin: 8px 0 0;
+  color: #475569;
+}
+
+.empty-state-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 12px;
+  color: #334155;
+  font-weight: 600;
+}
+
 .inline-error {
   margin-top: 14px;
 }

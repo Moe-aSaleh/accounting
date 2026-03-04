@@ -3,12 +3,25 @@ import { useOutletContext } from "react-router-dom";
 import { fetchProtectedJson } from "../lib/api";
 import { formatCurrency } from "../lib/format";
 
+function hasMonthActivity(summary) {
+  if (!summary) {
+    return false;
+  }
+
+  return (
+    Number(summary.total_income || 0) > 0 ||
+    Number(summary.total_expense || 0) > 0 ||
+    Number(summary.total_salaries || 0) > 0
+  );
+}
+
 export default function Reports({ token, onUnauthorized, selectedMonth }) {
   const { currentUserRole = null } = useOutletContext();
   const [summary, setSummary] = useState(null);
   const [yearOverview, setYearOverview] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const monthHasActivity = hasMonthActivity(summary);
 
   useEffect(() => {
     if (!token || currentUserRole === "staff" || currentUserRole === null) {
@@ -84,32 +97,45 @@ export default function Reports({ token, onUnauthorized, selectedMonth }) {
               <span className="chart-panel-meta">{summary.month}</span>
             </div>
 
-            <div className="summary-grid">
-              <article className="stat-card">
-                <span className="stat-label">Opening Balance</span>
-                <strong>{formatCurrency(summary.opening_balance)}</strong>
-              </article>
-              <article className="stat-card">
-                <span className="stat-label">Total Income</span>
-                <strong>{formatCurrency(summary.total_income)}</strong>
-              </article>
-              <article className="stat-card">
-                <span className="stat-label">Expenses</span>
-                <strong>{formatCurrency(summary.total_expense)}</strong>
-              </article>
-              <article className="stat-card">
-                <span className="stat-label">Salaries</span>
-                <strong>{formatCurrency(summary.total_salaries)}</strong>
-              </article>
-              <article className="stat-card highlight">
-                <span className="stat-label">Net Profit</span>
-                <strong>{formatCurrency(summary.monthly_balance)}</strong>
-              </article>
-              <article className="stat-card highlight">
-                <span className="stat-label">Closing Balance</span>
-                <strong>{formatCurrency(summary.closing_balance)}</strong>
-              </article>
-            </div>
+            {monthHasActivity ? (
+              <div className="summary-grid">
+                <article className="stat-card">
+                  <span className="stat-label">Opening Balance</span>
+                  <strong>{formatCurrency(summary.opening_balance)}</strong>
+                </article>
+                <article className="stat-card">
+                  <span className="stat-label">Total Income</span>
+                  <strong>{formatCurrency(summary.total_income)}</strong>
+                </article>
+                <article className="stat-card">
+                  <span className="stat-label">Expenses</span>
+                  <strong>{formatCurrency(summary.total_expense)}</strong>
+                </article>
+                <article className="stat-card">
+                  <span className="stat-label">Salaries</span>
+                  <strong>{formatCurrency(summary.total_salaries)}</strong>
+                </article>
+                <article className="stat-card highlight">
+                  <span className="stat-label">Net Profit</span>
+                  <strong>{formatCurrency(summary.monthly_balance)}</strong>
+                </article>
+                <article className="stat-card highlight">
+                  <span className="stat-label">Closing Balance</span>
+                  <strong>{formatCurrency(summary.closing_balance)}</strong>
+                </article>
+              </div>
+            ) : (
+              <section className="empty-state-panel">
+                <h4>No activity recorded</h4>
+                <p>
+                  There is no income, expense, or salary activity for {summary.month}.
+                </p>
+                <div className="empty-state-metrics">
+                  <span>Opening Balance: {formatCurrency(summary.opening_balance)}</span>
+                  <span>Closing Balance: {formatCurrency(summary.closing_balance)}</span>
+                </div>
+              </section>
+            )}
           </section>
 
           {yearOverview && (
