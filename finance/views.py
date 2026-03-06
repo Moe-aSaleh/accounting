@@ -39,20 +39,36 @@ IMPORT_HEADER_ALIASES = {
     "month": "date",
     "description": "description",
     "details": "description",
+    "التفاصيل": "description",
     "employee_name": "employee_name",
     "employee name": "employee_name",
     "employee": "employee_name",
+    "الموظف": "employee_name",
     "spare_parts_amount": "spare_parts_amount",
     "spare parts amount": "spare_parts_amount",
     "spare_parts": "spare_parts_amount",
     "spare parts": "spare_parts_amount",
     "parts": "spare_parts_amount",
+    "قطع غيار": "spare_parts_amount",
     "labor_amount": "labor_amount",
     "labor amount": "labor_amount",
     "labor": "labor_amount",
+    "اجور يد": "labor_amount",
+    "أجور يد": "labor_amount",
+    "expense_description": "expense_description",
+    "expense description": "expense_description",
+    "expense details": "expense_description",
+    "تفاصيل المصاريف": "expense_description",
+    "expense_amount": "expense_amount",
+    "expense amount": "expense_amount",
+    "المصروف": "expense_amount",
+    "salary_amount": "salary_amount",
+    "salary": "salary_amount",
+    "الراتب": "salary_amount",
     "amount": "amount",
     "salary_type": "salary_type",
     "salary type": "salary_type",
+    "نوع الراتب": "salary_type",
     "commission_type": "salary_type",
     "commission type": "salary_type",
     "commission_percentage": "commission_percentage",
@@ -289,6 +305,18 @@ def canonicalize_import_key(value):
 
     fallback_key = normalized_value.replace(" ", "_")
     return IMPORT_HEADER_ALIASES.get(fallback_key, fallback_key)
+
+
+def normalize_salary_type(raw_value):
+    normalized_value = (raw_value or "").strip().lower()
+
+    if normalized_value in {"", "fixed", "ثابت", "راتب ثابت"}:
+        return Salary.SALARY_TYPE_FIXED
+
+    if normalized_value in {"commission", "عمولة", "نسبة", "نسبة مئوية"}:
+        return Salary.SALARY_TYPE_COMMISSION
+
+    return normalized_value
 
 
 def get_income_total(validated_data):
@@ -810,15 +838,36 @@ def import_monthly_csv_view(request):
         raise ValidationError({"detail": "The CSV file is empty."})
 
     normalized_headers = {canonicalize_import_key(header) for header in reader.fieldnames if header}
-    required_headers = {"record_type", "date"}
+    old_required_headers = {"record_type", "date"}
+    new_supported_headers = {
+        "description",
+        "labor_amount",
+        "spare_parts_amount",
+        "expense_description",
+        "expense_amount",
+        "employee_name",
+        "salary_amount",
+        "salary_type",
+    }
 
-    if not required_headers.issubset(normalized_headers):
+    has_old_format = old_required_headers.issubset(normalized_headers)
+    has_new_format = bool(normalized_headers.intersection(new_supported_headers))
+
+    if not has_old_format and not has_new_format:
         raise ValidationError(
-            {"detail": "The CSV must include at least record_type and date columns."}
+            {
+                "detail": (
+                    "The CSV headers are not recognized. Use either the old format "
+                    "(record_type + date) or the new format "
+                    "(description, labor, spare parts, expense description, expense amount, "
+                    "employee, salary, salary type)."
+                )
+            }
         )
 
     prepared_rows = []
     row_errors = []
+    fallback_month = get_selected_month(request)
 
     for row_number, row in enumerate(reader, start=2):
         normalized_row = {
@@ -829,37 +878,101 @@ def import_monthly_csv_view(request):
         if not any(normalized_row.values()):
             continue
 
-        record_type = normalized_row.get("record_type", "").lower()
+        record_type = (normalized_row.get("record_type") or "").lower()
         date_value = normalized_row.get("date", "")
 
-        try:
-            record_date = parse_import_date(date_value)
-        except ValueError:
-            row_errors.append(
-                (
-                    row_number,
-                    "date must be in YYYY-MM-DD, YYYY-MM, DD/MM/YYYY, MM/DD/YYYY, or MM/YYYY format.",
+        if record_type:
+            try:
+                record_date = parse_import_date(date_value)
+            except ValueError:
+                row_errors.append(
+                    (
+                        row_number,
+                        "date must be in YYYY-MM-DD, YYYY-MM, DD/MM/YYYY, MM/DD/YYYY, or MM/YYYY format.",
+                    )
                 )
+                continue
+
+            if record_type not in {"income", "expense", "salary"}:
+                row_errors.append(
+                    (
+                        row_number,
+                        "record_type must be income, expense, or salary.",
+                    )
+                )
+                continue
+
+            prepared_rows.append(
+                {
+                    "row_number": row_number,
+                    "record_type": record_type,
+                    "record_date": record_date,
+                    "data": normalized_row,
+                }
             )
             continue
 
-        if record_type not in {"income", "expense", "salary"}:
-            row_errors.append(
-                (
-                    row_number,
-                    "record_type must be income, expense, or salary.",
-                )
-            )
-            continue
-
-        prepared_rows.append(
-            {
-                "row_number": row_number,
-                "record_type": record_type,
-                "record_date": record_date,
-                "data": normalized_row,
-            }
+        income_has_values = any(
+            [
+                normalized_row.get("description", ""),
+                normalized_row.get("labor_amount", ""),
+                normalized_row.get("spare_parts_amount", ""),
+            ]
         )
+        expense_has_values = any(
+            [
+                normalized_row.get("expense_description", ""),
+                normalized_row.get("expense_amount", ""),
+            ]
+        )
+        salary_has_values = any(
+            [
+                normalized_row.get("employee_name", ""),
+                normalized_row.get("salary_amount", ""),
+                normalized_row.get("salary_type", ""),
+            ]
+        )
+
+        if income_has_values:
+            prepared_rows.append(
+                {
+                    "row_number": row_number,
+                    "record_type": "income",
+                    "record_date": fallback_month,
+                    "data": {
+                        "description": normalized_row.get("description", ""),
+                        "spare_parts_amount": normalized_row.get("spare_parts_amount", ""),
+                        "labor_amount": normalized_row.get("labor_amount", ""),
+                    },
+                }
+            )
+
+        if expense_has_values:
+            prepared_rows.append(
+                {
+                    "row_number": row_number,
+                    "record_type": "expense",
+                    "record_date": fallback_month,
+                    "data": {
+                        "description": normalized_row.get("expense_description", ""),
+                        "amount": normalized_row.get("expense_amount", ""),
+                    },
+                }
+            )
+
+        if salary_has_values:
+            prepared_rows.append(
+                {
+                    "row_number": row_number,
+                    "record_type": "salary",
+                    "record_date": fallback_month,
+                    "data": {
+                        "employee_name": normalized_row.get("employee_name", ""),
+                        "amount": normalized_row.get("salary_amount", ""),
+                        "salary_type": normalize_salary_type(normalized_row.get("salary_type", "")),
+                    },
+                }
+            )
 
     if row_errors:
         raise ValidationError({"detail": build_import_error_message(row_errors)})
@@ -885,9 +998,10 @@ def import_monthly_csv_view(request):
                 imported_months.add(row["record_date"].strftime("%Y-%m"))
 
                 if row_group == "income":
+                    income_description = row_data.get("description") or "Imported income"
                     serializer = IncomeSerializer(
                         data={
-                            "description": row_data.get("description", ""),
+                            "description": income_description,
                             "spare_parts_amount": row_data.get("spare_parts_amount") or "0",
                             "labor_amount": row_data.get("labor_amount") or "0",
                             "date": record_date,
@@ -905,10 +1019,15 @@ def import_monthly_csv_view(request):
                         amount=get_income_total(serializer.validated_data),
                     )
                 elif row_group == "expense":
+                    expense_description = (
+                        row_data.get("description")
+                        or row_data.get("expense_description")
+                        or "Imported expense"
+                    )
                     serializer = ExpenseSerializer(
                         data={
-                            "description": row_data.get("description", ""),
-                            "amount": row_data.get("amount", ""),
+                            "description": expense_description,
+                            "amount": row_data.get("amount") or row_data.get("expense_amount") or "0",
                             "date": record_date,
                         }
                     )
@@ -920,10 +1039,11 @@ def import_monthly_csv_view(request):
                         )
                     serializer.save(company=company, user=request.user)
                 else:
-                    salary_type = (row_data.get("salary_type") or Salary.SALARY_TYPE_FIXED).lower()
+                    salary_type = normalize_salary_type(row_data.get("salary_type"))
+                    employee_name = row_data.get("employee_name") or "Imported employee"
                     serializer = SalarySerializer(
                         data={
-                            "employee_name": row_data.get("employee_name", ""),
+                            "employee_name": employee_name,
                             "salary_type": salary_type,
                             "commission_base": (
                                 Salary.COMMISSION_BASE_LABOR

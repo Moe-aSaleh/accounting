@@ -211,11 +211,9 @@ export default function AppLayout({
 
   const handleDownloadTemplate = () => {
     const templateRows = [
-      "month,description,labor,spare parts,record type,amount,employee name,salary type,commission percent",
-      "2026-03,Brake repair,150,500,income,,,,",
-      "2026-03,Shop rent,,,expense,1200,,,",
-      "2026-03,,,,salary,800,Ahmed,fixed,",
-      "2026-03,,,,salary,,Ali,commission,20",
+      "description,labor,spare parts,expense description,expense amount,employee,salary,salary type",
+      "Brake repair,150,500,Shop rent,1200,Ahmed,800,fixed",
+      "تصليح فرامل,250,700,إيجار الورشة,1200,محمد,3000,ثابت",
     ];
     const csvContent = `\uFEFF${templateRows.join("\n")}`;
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
