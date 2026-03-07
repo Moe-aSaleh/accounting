@@ -44,6 +44,7 @@ export default function Dashboard({ token, onUnauthorized }) {
     currentUserRole === "owner" ||
     currentUserRole === "accountant" ||
     currentUserRole === "staff";
+  const [availableYears, setAvailableYears] = useState([]);
   const [selectedYear, setSelectedYear] = useState(getCurrentYear);
   const [selectedMonthNumber, setSelectedMonthNumber] = useState(getCurrentMonthNumber);
   const [summary, setSummary] = useState(null);
@@ -54,8 +55,56 @@ export default function Dashboard({ token, onUnauthorized }) {
   const [loadingYear, setLoadingYear] = useState(true);
 
   const normalizedYear = /^\d{4}$/.test(selectedYear) ? selectedYear : getCurrentYear();
+  const yearOptions = availableYears.length > 0 ? availableYears : [getCurrentYear()];
   const selectedMonthKey = `${normalizedYear}-${selectedMonthNumber}`;
   const selectedYearNumber = Number(normalizedYear);
+
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+
+    let isActive = true;
+
+    const loadAvailableYears = async () => {
+      try {
+        const payload = await fetchProtectedJson("/api/available-years/", {
+          token,
+          onUnauthorized,
+          fallbackMessage: "Failed to load available years.",
+        });
+
+        if (!isActive || payload === null) {
+          return;
+        }
+
+        const years = Array.isArray(payload.years)
+          ? payload.years
+              .map((year) => String(year))
+              .filter((year) => /^\d{4}$/.test(year))
+              .sort((left, right) => right.localeCompare(left))
+          : [];
+        const resolvedYears = years.length > 0 ? years : [getCurrentYear()];
+
+        setAvailableYears(resolvedYears);
+        setSelectedYear((current) =>
+          resolvedYears.includes(current) ? current : resolvedYears[0],
+        );
+      } catch {
+        if (isActive) {
+          const fallbackYear = getCurrentYear();
+          setAvailableYears([fallbackYear]);
+          setSelectedYear((current) => (/^\d{4}$/.test(current) ? current : fallbackYear));
+        }
+      }
+    };
+
+    loadAvailableYears();
+
+    return () => {
+      isActive = false;
+    };
+  }, [token, onUnauthorized]);
 
   useEffect(() => {
     if (!token) {
@@ -191,19 +240,16 @@ export default function Dashboard({ token, onUnauthorized }) {
         <div className="record-filter-grid">
           <label className="field-group">
             <span>Year</span>
-            <input
-              type="number"
-              min="1900"
-              max="2100"
-              step="1"
-              value={selectedYear}
+            <select
+              value={normalizedYear}
               onChange={(event) => setSelectedYear(event.target.value)}
-              onBlur={() => {
-                if (!/^\d{4}$/.test(selectedYear)) {
-                  setSelectedYear(getCurrentYear());
-                }
-              }}
-            />
+            >
+              {yearOptions.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
           </label>
 
           <label className="field-group">
