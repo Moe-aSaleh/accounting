@@ -28,7 +28,6 @@ from .serializers import (
     UserProfileRoleSerializer,
 )
 
-MONTH_TILE_YEARS = (2025, 2026)
 IMPORT_HEADER_ALIASES = {
     "record_type": "record_type",
     "recordtype": "record_type",
@@ -37,6 +36,7 @@ IMPORT_HEADER_ALIASES = {
     "type": "record_type",
     "date": "date",
     "month": "date",
+    "الشهر": "date",
     "description": "description",
     "details": "description",
     "التفاصيل": "description",
@@ -69,12 +69,13 @@ IMPORT_HEADER_ALIASES = {
     "salary_type": "salary_type",
     "salary type": "salary_type",
     "نوع الراتب": "salary_type",
-    "commission_type": "salary_type",
-    "commission type": "salary_type",
-    "commission_percentage": "commission_percentage",
-    "commission percentage": "commission_percentage",
     "commission_percent": "commission_percentage",
     "commission percent": "commission_percentage",
+    "commission_percentage": "commission_percentage",
+    "commission percentage": "commission_percentage",
+    "نسبة العمولة": "commission_percentage",
+    "commission_type": "salary_type",
+    "commission type": "salary_type",
 }
 
 
@@ -409,6 +410,29 @@ def get_period_net_change(company, start_date=None, end_date=None):
     return total_income - total_expense - total_salaries
 
 
+def get_available_years(company):
+    year_values = set()
+
+    for model, date_field in (
+        (Income, "date"),
+        (Expense, "date"),
+        (Salary, "date"),
+        (MonthlyOpeningBalance, "month"),
+    ):
+        year_values.update(
+            value.year for value in model.objects.filter(company=company).dates(date_field, "year")
+        )
+
+    current_year = timezone.localdate().year
+
+    if not year_values:
+        return [current_year]
+
+    min_year = min(year_values)
+    max_year = max(max(year_values), current_year)
+    return list(range(min_year, max_year + 1))
+
+
 class IncomeViewSet(ModelViewSet):
     serializer_class = IncomeSerializer
 
@@ -681,8 +705,9 @@ def summary_view(request):
 @api_view(['GET'])
 def month_overview_view(request):
     company = get_user_company(request.user)
+    available_years = get_available_years(company)
     monthly_income_rows = (
-        Income.objects.filter(company=company, date__year__in=MONTH_TILE_YEARS)
+        Income.objects.filter(company=company, date__year__in=available_years)
         .annotate(year=ExtractYear("date"), month=ExtractMonth("date"))
         .values("year", "month")
         .annotate(total_income=Sum("amount"))
@@ -693,7 +718,7 @@ def month_overview_view(request):
     }
     month_tiles = []
 
-    for year in MONTH_TILE_YEARS:
+    for year in available_years:
         for month in range(1, 13):
             month_tiles.append({
                 "month_key": f"{year}-{month:02d}",
@@ -840,6 +865,7 @@ def import_monthly_csv_view(request):
     normalized_headers = {canonicalize_import_key(header) for header in reader.fieldnames if header}
     old_required_headers = {"record_type", "date"}
     new_supported_headers = {
+        "date",
         "description",
         "labor_amount",
         "spare_parts_amount",
@@ -847,8 +873,8 @@ def import_monthly_csv_view(request):
         "expense_amount",
         "employee_name",
         "salary_amount",
-        "salary_type",
     }
+    new_required_headers = {"date"}
 
     has_old_format = old_required_headers.issubset(normalized_headers)
     has_new_format = bool(normalized_headers.intersection(new_supported_headers))
@@ -859,15 +885,24 @@ def import_monthly_csv_view(request):
                 "detail": (
                     "The CSV headers are not recognized. Use either the old format "
                     "(record_type + date) or the new format "
-                    "(description, labor, spare parts, expense description, expense amount, "
-                    "employee, salary, salary type)."
+                    "(month, description, labor, spare parts, expense description, expense amount, "
+                    "employee, salary)."
+                )
+            }
+        )
+
+    if has_new_format and not new_required_headers.issubset(normalized_headers):
+        raise ValidationError(
+            {
+                "detail": (
+                    "The new CSV format requires a month column "
+                    "(month/date/الشهر) in each data row."
                 )
             }
         )
 
     prepared_rows = []
     row_errors = []
-    fallback_month = get_selected_month(request)
 
     for row_number, row in enumerate(reader, start=2):
         normalized_row = {
@@ -929,16 +964,39 @@ def import_monthly_csv_view(request):
             [
                 normalized_row.get("employee_name", ""),
                 normalized_row.get("salary_amount", ""),
-                normalized_row.get("salary_type", ""),
             ]
         )
+        row_has_values = income_has_values or expense_has_values or salary_has_values
+
+        if not row_has_values:
+            continue
+
+        if not date_value:
+            row_errors.append(
+                (
+                    row_number,
+                    "month is required for non-empty rows.",
+                )
+            )
+            continue
+
+        try:
+            record_date = parse_import_date(date_value)
+        except ValueError:
+            row_errors.append(
+                (
+                    row_number,
+                    "month/date must be in YYYY-MM-DD, YYYY-MM, DD/MM/YYYY, MM/DD/YYYY, or MM/YYYY format.",
+                )
+            )
+            continue
 
         if income_has_values:
             prepared_rows.append(
                 {
                     "row_number": row_number,
                     "record_type": "income",
-                    "record_date": fallback_month,
+                    "record_date": record_date,
                     "data": {
                         "description": normalized_row.get("description", ""),
                         "spare_parts_amount": normalized_row.get("spare_parts_amount", ""),
@@ -952,7 +1010,7 @@ def import_monthly_csv_view(request):
                 {
                     "row_number": row_number,
                     "record_type": "expense",
-                    "record_date": fallback_month,
+                    "record_date": record_date,
                     "data": {
                         "description": normalized_row.get("expense_description", ""),
                         "amount": normalized_row.get("expense_amount", ""),
@@ -965,11 +1023,10 @@ def import_monthly_csv_view(request):
                 {
                     "row_number": row_number,
                     "record_type": "salary",
-                    "record_date": fallback_month,
+                    "record_date": record_date,
                     "data": {
                         "employee_name": normalized_row.get("employee_name", ""),
                         "amount": normalized_row.get("salary_amount", ""),
-                        "salary_type": normalize_salary_type(normalized_row.get("salary_type", "")),
                     },
                 }
             )
@@ -1039,22 +1096,13 @@ def import_monthly_csv_view(request):
                         )
                     serializer.save(company=company, user=request.user)
                 else:
-                    salary_type = normalize_salary_type(row_data.get("salary_type"))
                     employee_name = row_data.get("employee_name") or "Imported employee"
                     serializer = SalarySerializer(
                         data={
                             "employee_name": employee_name,
-                            "salary_type": salary_type,
-                            "commission_base": (
-                                Salary.COMMISSION_BASE_LABOR
-                                if salary_type == Salary.SALARY_TYPE_COMMISSION
-                                else ""
-                            ),
-                            "commission_percentage": (
-                                row_data.get("commission_percentage") or None
-                                if salary_type == Salary.SALARY_TYPE_COMMISSION
-                                else None
-                            ),
+                            "salary_type": Salary.SALARY_TYPE_FIXED,
+                            "commission_base": "",
+                            "commission_percentage": None,
                             "amount": row_data.get("amount") or "0",
                             "date": record_date,
                         }
@@ -1126,6 +1174,54 @@ def clear_month_view(request):
                 "income": deleted_income,
                 "expense": deleted_expense,
                 "salary": deleted_salary,
+            },
+        }
+    )
+
+
+@api_view(['POST'])
+def clear_year_view(request):
+    require_user_role(request.user, UserProfile.ROLE_OWNER)
+    company = get_user_company(request.user)
+    year_value = request.query_params.get("year")
+
+    if not year_value:
+        raise ValidationError({"detail": "Year is required."})
+
+    try:
+        selected_year = int(year_value)
+    except (TypeError, ValueError):
+        raise ValidationError({"detail": "Year must be in YYYY format."})
+
+    deleted_income, _ = Income.objects.filter(company=company, date__year=selected_year).delete()
+    deleted_expense, _ = Expense.objects.filter(company=company, date__year=selected_year).delete()
+    deleted_salary, _ = Salary.objects.filter(company=company, date__year=selected_year).delete()
+    deleted_opening_balance, _ = MonthlyOpeningBalance.objects.filter(
+        company=company,
+        month__year=selected_year,
+    ).delete()
+    log_audit_event(
+        "year_cleared",
+        request,
+        company=company,
+        summary=f"Cleared records for year {selected_year}.",
+        details={
+            "year": selected_year,
+            "deleted_income": deleted_income,
+            "deleted_expense": deleted_expense,
+            "deleted_salary": deleted_salary,
+            "deleted_opening_balance": deleted_opening_balance,
+        },
+    )
+
+    return Response(
+        {
+            "year": selected_year,
+            "deleted": {
+                "income": deleted_income,
+                "expense": deleted_expense,
+                "salary": deleted_salary,
+                "opening_balance": deleted_opening_balance,
             },
         }
     )

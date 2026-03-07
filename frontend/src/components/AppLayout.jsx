@@ -1,12 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import {
   fetchProtectedJson,
-  postProtectedAction,
   uploadProtectedFile,
 } from "../lib/api";
 import { formatCurrency } from "../lib/format";
-import { MONTH_GROUPS, MONTH_OPTIONS } from "../lib/months";
 
 export default function AppLayout({
   token,
@@ -21,6 +19,7 @@ export default function AppLayout({
   const location = useLocation();
   const [isMonthPanelOpen, setIsMonthPanelOpen] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [monthTiles, setMonthTiles] = useState([]);
   const [monthTotals, setMonthTotals] = useState({});
   const [companySettings, setCompanySettings] = useState(null);
   const [importMessage, setImportMessage] = useState("");
@@ -29,8 +28,45 @@ export default function AppLayout({
   const fileInputRef = useRef(null);
   const navClassName = ({ isActive }) =>
     isActive ? "app-nav-link active" : "app-nav-link";
-  const selectedMonthIndex = MONTH_OPTIONS.findIndex((month) => month.key === selectedMonth);
-  const selectedMonthMatch = MONTH_OPTIONS.find((month) => month.key === selectedMonth);
+  const monthOptions = useMemo(() => {
+    const options = [...monthTiles]
+      .sort((left, right) => left.month_key.localeCompare(right.month_key))
+      .map((tile) => ({
+        key: tile.month_key,
+        label: tile.label,
+      }));
+
+    if (options.length === 0) {
+      return [{ key: selectedMonth, label: selectedMonth }];
+    }
+
+    if (!options.some((option) => option.key === selectedMonth)) {
+      options.push({ key: selectedMonth, label: selectedMonth });
+      options.sort((left, right) => left.key.localeCompare(right.key));
+    }
+
+    return options;
+  }, [monthTiles, selectedMonth]);
+  const monthGroups = useMemo(() => {
+    const groups = new Map();
+
+    monthOptions.forEach((monthOption) => {
+      const year = Number(monthOption.key.split("-")[0]);
+      if (!groups.has(year)) {
+        groups.set(year, []);
+      }
+      groups.get(year).push(monthOption);
+    });
+
+    return [...groups.entries()]
+      .sort((left, right) => left[0] - right[0])
+      .map(([year, months]) => ({
+        year,
+        months: months.sort((left, right) => left.key.localeCompare(right.key)),
+      }));
+  }, [monthOptions]);
+  const selectedMonthIndex = monthOptions.findIndex((month) => month.key === selectedMonth);
+  const selectedMonthMatch = monthOptions.find((month) => month.key === selectedMonth);
   const selectedMonthYear = selectedMonth.split("-")[0];
   const selectedMonthLabel = selectedMonthMatch
     ? `${selectedMonthMatch.label} ${selectedMonthYear}`
@@ -95,6 +131,7 @@ export default function AppLayout({
   useEffect(() => {
     if (!showReportControls) {
       setMonthTotals({});
+      setMonthTiles([]);
       return;
     }
 
@@ -118,9 +155,11 @@ export default function AppLayout({
         }, {});
 
         setMonthTotals(nextTotals);
+        setMonthTiles(data);
       } catch {
         if (isActive) {
           setMonthTotals({});
+          setMonthTiles([]);
         }
       }
     };
@@ -165,11 +204,11 @@ export default function AppLayout({
   const handleStepMonth = (direction) => {
     const nextIndex = selectedMonthIndex + direction;
 
-    if (nextIndex < 0 || nextIndex >= MONTH_OPTIONS.length) {
+    if (nextIndex < 0 || nextIndex >= monthOptions.length) {
       return;
     }
 
-    onMonthChange(MONTH_OPTIONS[nextIndex].key);
+    onMonthChange(monthOptions[nextIndex].key);
   };
 
   const handleImportClick = () => {
@@ -178,42 +217,11 @@ export default function AppLayout({
     fileInputRef.current?.click();
   };
 
-  const handleClearMonth = async () => {
-    const warning = `This will permanently delete all income, expenses, and salaries for ${selectedMonthLabel}. Continue?`;
-    const shouldClear = window.confirm(warning);
-
-    if (!shouldClear) {
-      return;
-    }
-
-    setImportMessage("");
-    setImportError("");
-
-    try {
-      const result = await postProtectedAction("/api/clear-month/", {
-        token,
-        onUnauthorized,
-        fallbackMessage: "Failed to clear the selected month.",
-        query: { month: selectedMonth },
-      });
-
-      if (result) {
-        const deleted = result.deleted;
-        setImportMessage(
-          `Cleared ${result.month}: removed ${deleted.income} income, ${deleted.expense} expenses, and ${deleted.salary} salaries.`,
-        );
-        onDataImported();
-      }
-    } catch (actionError) {
-      setImportError(actionError.message);
-    }
-  };
-
   const handleDownloadTemplate = () => {
     const templateRows = [
-      "description,labor,spare parts,expense description,expense amount,employee,salary,salary type",
-      "Brake repair,150,500,Shop rent,1200,Ahmed,800,fixed",
-      "تصليح فرامل,250,700,إيجار الورشة,1200,محمد,3000,ثابت",
+      "month,description,labor,spare parts,expense description,expense amount,employee,salary",
+      "2026-03,Brake repair,150,500,Shop rent,1200,Ahmed,800",
+      "2026-04,تصليح فرامل,250,700,إيجار الورشة,1200,محمد,3000",
     ];
     const csvContent = `\uFEFF${templateRows.join("\n")}`;
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -222,6 +230,25 @@ export default function AppLayout({
 
     link.href = url;
     link.download = "monthly_import_template.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadArabicTemplate = () => {
+    const templateRows = [
+      "الشهر,التفاصيل,أجور يد,قطع غيار,تفاصيل المصاريف,المصروف,الموظف,الراتب",
+      "2026-03,تصليح فرامل,250,700,إيجار الورشة,1200,محمد,3000",
+      "2026-04,Brake repair,150,500,Shop rent,1200,Ahmed,800",
+    ];
+    const csvContent = `\uFEFF${templateRows.join("\n")}`;
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = "monthly_import_template_ar.csv";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -378,7 +405,7 @@ export default function AppLayout({
               type="button"
               className="month-nav-button"
               onClick={() => handleStepMonth(1)}
-              disabled={selectedMonthIndex >= MONTH_OPTIONS.length - 1}
+              disabled={selectedMonthIndex >= monthOptions.length - 1}
             >
               →
             </button>
@@ -410,15 +437,13 @@ export default function AppLayout({
               Download Template
             </button>
 
-            {canManageProtectedActions && (
-              <button
-                type="button"
-                className="danger-button month-toggle-button"
-                onClick={handleClearMonth}
-              >
-                Clear Month
-              </button>
-            )}
+            <button
+              type="button"
+              className="secondary-button month-toggle-button"
+              onClick={handleDownloadArabicTemplate}
+            >
+              Download Arabic Template
+            </button>
 
             <input
               ref={fileInputRef}
@@ -433,7 +458,7 @@ export default function AppLayout({
           {importError && <p className="status-message error">{importError}</p>}
 
           {isMonthPanelOpen &&
-            MONTH_GROUPS.map((group) => (
+            monthGroups.map((group) => (
               <div key={group.year} className="month-group">
                 <p className="month-group-title">{group.year}</p>
                 <div className="month-grid">

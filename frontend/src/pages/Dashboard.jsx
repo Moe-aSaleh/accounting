@@ -18,15 +18,12 @@ const MONTH_OPTIONS = [
   { value: "12", label: "December" },
 ];
 
-const YEAR_OPTIONS = ["2025", "2026"];
-
 function getCurrentMonthNumber() {
   return new Date().toISOString().slice(5, 7);
 }
 
 function getCurrentYear() {
-  const currentYear = new Date().getFullYear().toString();
-  return YEAR_OPTIONS.includes(currentYear) ? currentYear : "2026";
+  return new Date().getFullYear().toString();
 }
 
 function hasMonthActivity(summary) {
@@ -56,7 +53,9 @@ export default function Dashboard({ token, onUnauthorized }) {
   const [loadingSummary, setLoadingSummary] = useState(true);
   const [loadingYear, setLoadingYear] = useState(true);
 
-  const selectedMonthKey = `${selectedYear}-${selectedMonthNumber}`;
+  const normalizedYear = /^\d{4}$/.test(selectedYear) ? selectedYear : getCurrentYear();
+  const selectedMonthKey = `${normalizedYear}-${selectedMonthNumber}`;
+  const selectedYearNumber = Number(normalizedYear);
 
   useEffect(() => {
     if (!token) {
@@ -116,7 +115,7 @@ export default function Dashboard({ token, onUnauthorized }) {
           token,
           onUnauthorized,
           fallbackMessage: "Failed to load dashboard year data.",
-          query: { year: selectedYear },
+          query: { year: selectedYearNumber },
         });
 
         if (!isActive || nextYearOverview === null) {
@@ -142,7 +141,7 @@ export default function Dashboard({ token, onUnauthorized }) {
     return () => {
       isActive = false;
     };
-  }, [token, onUnauthorized, selectedYear]);
+  }, [token, onUnauthorized, selectedYearNumber]);
 
   const yearTotals =
     yearOverview?.months.reduce(
@@ -192,16 +191,19 @@ export default function Dashboard({ token, onUnauthorized }) {
         <div className="record-filter-grid">
           <label className="field-group">
             <span>Year</span>
-            <select
+            <input
+              type="number"
+              min="1900"
+              max="2100"
+              step="1"
               value={selectedYear}
               onChange={(event) => setSelectedYear(event.target.value)}
-            >
-              {YEAR_OPTIONS.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
+              onBlur={() => {
+                if (!/^\d{4}$/.test(selectedYear)) {
+                  setSelectedYear(getCurrentYear());
+                }
+              }}
+            />
           </label>
 
           <label className="field-group">
@@ -288,7 +290,7 @@ export default function Dashboard({ token, onUnauthorized }) {
           <section className="sub-panel dashboard-side-panel">
             <div className="chart-panel-header">
               <h3 className="sub-panel-title">Selected Year</h3>
-              <span className="chart-panel-meta">{selectedYear}</span>
+              <span className="chart-panel-meta">{normalizedYear}</span>
             </div>
 
             {yearError && <p className="status-message error">{yearError}</p>}
