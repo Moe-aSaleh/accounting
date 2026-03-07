@@ -2,6 +2,7 @@ from rest_framework.routers import DefaultRouter
 from django.urls import path
 from .views import (
     clear_month_view,
+    clear_year_view,
     create_company_user_view,
     company_settings_view,
     company_users_view,
@@ -27,6 +28,7 @@ urlpatterns = router.urls + [
     path('year-overview/', year_overview_view),
     path('import-monthly-csv/', import_monthly_csv_view),
     path('clear-month/', clear_month_view),
+    path('clear-year/', clear_year_view),
     path('opening-balance/', set_opening_balance_view),
     path('company-settings/', company_settings_view),
     path('company-users/', company_users_view),

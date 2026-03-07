@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { fetchProtectedJson, postProtectedJson, putProtectedJson } from "../lib/api";
+import {
+  fetchProtectedJson,
+  postProtectedAction,
+  postProtectedJson,
+  putProtectedJson,
+} from "../lib/api";
 
 export default function Settings({
   token,
@@ -32,6 +37,16 @@ export default function Settings({
   const [pageError, setPageError] = useState("");
   const [settingsError, setSettingsError] = useState("");
   const [userError, setUserError] = useState("");
+  const [maintenanceError, setMaintenanceError] = useState("");
+  const [maintenanceMessage, setMaintenanceMessage] = useState("");
+  const [isClearingMonth, setIsClearingMonth] = useState(false);
+  const [isClearingYear, setIsClearingYear] = useState(false);
+  const [maintenanceMonth, setMaintenanceMonth] = useState(() =>
+    new Date().toISOString().slice(0, 7),
+  );
+  const [maintenanceYear, setMaintenanceYear] = useState(() =>
+    String(new Date().getFullYear()),
+  );
   const [successMessage, setSuccessMessage] = useState("");
   const [roleMessage, setRoleMessage] = useState("");
 
@@ -234,6 +249,80 @@ export default function Settings({
     }
   };
 
+  const handleClearMonth = async () => {
+    const warning = `This will permanently delete all income, expenses, and salaries for ${maintenanceMonth}. Continue?`;
+
+    if (!window.confirm(warning)) {
+      return;
+    }
+
+    setMaintenanceError("");
+    setMaintenanceMessage("");
+    setIsClearingMonth(true);
+
+    try {
+      const result = await postProtectedAction("/api/clear-month/", {
+        token,
+        onUnauthorized,
+        fallbackMessage: "Failed to clear month records.",
+        query: { month: maintenanceMonth },
+      });
+
+      if (!result) {
+        return;
+      }
+
+      const deleted = result.deleted;
+      setMaintenanceMessage(
+        `Cleared ${result.month}: removed ${deleted.income} income, ${deleted.expense} expenses, and ${deleted.salary} salaries.`,
+      );
+    } catch (clearError) {
+      setMaintenanceError(clearError.message);
+    } finally {
+      setIsClearingMonth(false);
+    }
+  };
+
+  const handleClearYear = async () => {
+    if (!/^\d{4}$/.test(maintenanceYear)) {
+      setMaintenanceError("Enter a valid year in YYYY format.");
+      setMaintenanceMessage("");
+      return;
+    }
+
+    const warning = `This will permanently delete all income, expenses, salaries, and opening balances for year ${maintenanceYear}. Continue?`;
+
+    if (!window.confirm(warning)) {
+      return;
+    }
+
+    setMaintenanceError("");
+    setMaintenanceMessage("");
+    setIsClearingYear(true);
+
+    try {
+      const result = await postProtectedAction("/api/clear-year/", {
+        token,
+        onUnauthorized,
+        fallbackMessage: "Failed to clear year records.",
+        query: { year: maintenanceYear },
+      });
+
+      if (!result) {
+        return;
+      }
+
+      const deleted = result.deleted;
+      setMaintenanceMessage(
+        `Cleared ${result.year}: removed ${deleted.income} income, ${deleted.expense} expenses, ${deleted.salary} salaries, and ${deleted.opening_balance} opening balances.`,
+      );
+    } catch (clearError) {
+      setMaintenanceError(clearError.message);
+    } finally {
+      setIsClearingYear(false);
+    }
+  };
+
   return (
     <section className="panel data-panel">
       <h2 className="section-title">Settings</h2>
@@ -432,6 +521,63 @@ export default function Settings({
             </div>
             {userError && <p className="status-message error">{userError}</p>}
             {roleMessage && <p className="status-message success">{roleMessage}</p>}
+          </section>
+
+          <section className="sub-panel">
+            <h3 className="sub-panel-title">Data Maintenance</h3>
+            <p className="status-message subtle settings-copy">
+              Owner-only destructive actions. Please confirm carefully before deleting data.
+            </p>
+
+            <div className="settings-user-form">
+              <label className="field-group">
+                <span>Month (YYYY-MM)</span>
+                <input
+                  type="month"
+                  value={maintenanceMonth}
+                  onChange={(event) => setMaintenanceMonth(event.target.value)}
+                />
+              </label>
+
+              <div className="settings-user-submit">
+                <button
+                  type="button"
+                  className="danger-button"
+                  onClick={handleClearMonth}
+                  disabled={isClearingMonth || isClearingYear}
+                >
+                  {isClearingMonth ? "Clearing..." : "Clear Month"}
+                </button>
+              </div>
+            </div>
+
+            <div className="settings-user-form">
+              <label className="field-group">
+                <span>Year (YYYY)</span>
+                <input
+                  type="number"
+                  min="1900"
+                  max="2100"
+                  step="1"
+                  value={maintenanceYear}
+                  onChange={(event) => setMaintenanceYear(event.target.value)}
+                />
+              </label>
+
+              <div className="settings-user-submit">
+                <button
+                  type="button"
+                  className="danger-button"
+                  onClick={handleClearYear}
+                  disabled={isClearingYear || isClearingMonth}
+                >
+                  {isClearingYear ? "Clearing..." : "Clear Year"}
+                </button>
+              </div>
+            </div>
+
+            {maintenanceError && <p className="status-message error">{maintenanceError}</p>}
+            {maintenanceMessage && <p className="status-message success">{maintenanceMessage}</p>}
           </section>
         </div>
       )}
