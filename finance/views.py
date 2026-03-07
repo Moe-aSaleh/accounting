@@ -433,6 +433,26 @@ def get_available_years(company):
     return list(range(min_year, max_year + 1))
 
 
+def get_years_with_data(company):
+    year_values = set()
+
+    for model, date_field in (
+        (Income, "date"),
+        (Expense, "date"),
+        (Salary, "date"),
+        (MonthlyOpeningBalance, "month"),
+    ):
+        year_values.update(
+            value.year for value in model.objects.filter(company=company).dates(date_field, "year")
+        )
+
+    current_year = timezone.localdate().year
+    if not year_values:
+        return [current_year]
+
+    return sorted(year_values)
+
+
 class IncomeViewSet(ModelViewSet):
     serializer_class = IncomeSerializer
 
@@ -728,6 +748,13 @@ def month_overview_view(request):
             })
 
     return Response(month_tiles)
+
+
+@api_view(["GET"])
+def available_years_view(request):
+    company = get_user_company(request.user)
+    years = get_years_with_data(company)
+    return Response({"years": years})
 
 
 @api_view(['GET'])

@@ -10,6 +10,7 @@ from .views import (
     ExpenseViewSet,
     SalaryViewSet,
     summary_view,
+    available_years_view,
     month_overview_view,
     year_overview_view,
     import_monthly_csv_view,
@@ -24,6 +25,7 @@ router.register(r'salaries', SalaryViewSet, basename='salaries')
 
 urlpatterns = router.urls + [
     path('summary/', summary_view),
+    path('available-years/', available_years_view),
     path('month-overview/', month_overview_view),
     path('year-overview/', year_overview_view),
     path('import-monthly-csv/', import_monthly_csv_view),

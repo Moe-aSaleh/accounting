@@ -1,27 +1,26 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { fetchProtectedJson } from "../lib/api";
 import { formatCurrency } from "../lib/format";
 
-function hasMonthActivity(summary) {
-  if (!summary) {
-    return false;
-  }
-
-  return (
-    Number(summary.total_income || 0) > 0 ||
-    Number(summary.total_expense || 0) > 0 ||
-    Number(summary.total_salaries || 0) > 0
-  );
+function getCurrentYear() {
+  return String(new Date().getFullYear());
 }
 
-export default function Reports({ token, onUnauthorized, selectedMonth }) {
+export default function Reports({ token, onUnauthorized }) {
   const { currentUserRole = null } = useOutletContext();
-  const [summary, setSummary] = useState(null);
+  const yearCacheRef = useRef(new Map());
+  const [selectedYear, setSelectedYear] = useState(getCurrentYear);
+  const [availableYears, setAvailableYears] = useState([]);
+  const [expandedMonthKey, setExpandedMonthKey] = useState(null);
   const [yearOverview, setYearOverview] = useState(null);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
-  const monthHasActivity = hasMonthActivity(summary);
+  const [yearError, setYearError] = useState("");
+  const [loadingYear, setLoadingYear] = useState(true);
+  const normalizedYear = /^\d{4}$/.test(selectedYear)
+    ? selectedYear
+    : getCurrentYear();
+  const yearOptions = availableYears.length > 0 ? availableYears : [getCurrentYear()];
+  const latestYear = yearOptions[0];
 
   useEffect(() => {
     if (!token || currentUserRole === "staff" || currentUserRole === null) {
@@ -30,48 +29,102 @@ export default function Reports({ token, onUnauthorized, selectedMonth }) {
 
     let isActive = true;
 
-    const loadReports = async () => {
+    const loadAvailableYears = async () => {
       try {
-        const selectedYear = selectedMonth.split("-")[0];
-        const [nextSummary, nextYearOverview] = await Promise.all([
-          fetchProtectedJson("/api/summary/", {
-            token,
-            onUnauthorized,
-            fallbackMessage: "Failed to load monthly report data.",
-            query: { month: selectedMonth },
-          }),
-          fetchProtectedJson("/api/year-overview/", {
-            token,
-            onUnauthorized,
-            fallbackMessage: "Failed to load yearly report data.",
-            query: { year: selectedYear },
-          }),
-        ]);
+        const payload = await fetchProtectedJson("/api/available-years/", {
+          token,
+          onUnauthorized,
+          fallbackMessage: "Failed to load available report years.",
+        });
 
-        if (!isActive || nextSummary === null || nextYearOverview === null) {
+        if (!isActive || payload === null) {
           return;
         }
 
-        setError("");
-        setSummary(nextSummary);
-        setYearOverview(nextYearOverview);
-      } catch (fetchError) {
+        const years = Array.isArray(payload.years)
+          ? payload.years
+              .map((year) => String(year))
+              .filter((year) => /^\d{4}$/.test(year))
+              .sort((left, right) => right.localeCompare(left))
+          : [];
+        const resolvedYears = years.length > 0 ? years : [getCurrentYear()];
+
+        setAvailableYears(resolvedYears);
+        setSelectedYear((current) =>
+          resolvedYears.includes(current) ? current : resolvedYears[0],
+        );
+      } catch {
         if (isActive) {
-          setError(fetchError.message);
-        }
-      } finally {
-        if (isActive) {
-          setLoading(false);
+          const fallbackYear = getCurrentYear();
+          setAvailableYears([fallbackYear]);
+          setSelectedYear((current) => (/^\d{4}$/.test(current) ? current : fallbackYear));
         }
       }
     };
 
-    loadReports();
+    loadAvailableYears();
 
     return () => {
       isActive = false;
     };
-  }, [token, onUnauthorized, selectedMonth, currentUserRole]);
+  }, [token, onUnauthorized, currentUserRole]);
+
+  useEffect(() => {
+    if (!token || currentUserRole === "staff" || currentUserRole === null) {
+      return;
+    }
+
+    let isActive = true;
+
+    const cachedYearOverview = yearCacheRef.current.get(normalizedYear);
+    if (cachedYearOverview) {
+      setYearOverview(cachedYearOverview);
+      setYearError("");
+      setLoadingYear(false);
+      return () => {
+        isActive = false;
+      };
+    }
+
+    const loadYearOverview = async () => {
+      setLoadingYear(true);
+
+      try {
+        const nextYearOverview = await fetchProtectedJson(
+          "/api/year-overview/",
+          {
+            token,
+            onUnauthorized,
+            fallbackMessage: "Failed to load yearly report data.",
+            query: { year: normalizedYear },
+          },
+        );
+
+        if (!isActive || nextYearOverview === null) {
+          return;
+        }
+
+        yearCacheRef.current.set(normalizedYear, nextYearOverview);
+        setYearError("");
+        setYearOverview(nextYearOverview);
+        setExpandedMonthKey(null);
+      } catch (fetchError) {
+        if (isActive) {
+          setYearError(fetchError.message);
+        }
+      } finally {
+        if (isActive) {
+          setLoadingYear(false);
+        }
+      }
+    };
+
+    loadYearOverview();
+
+    return () => {
+      isActive = false;
+    };
+  }, [token, onUnauthorized, normalizedYear, currentUserRole]);
 
   return (
     <section className="panel data-panel">
@@ -79,70 +132,54 @@ export default function Reports({ token, onUnauthorized, selectedMonth }) {
       {currentUserRole === null ? (
         <p className="status-message">Loading...</p>
       ) : currentUserRole === "staff" ? (
-        <p className="status-message error">Staff users cannot access reports.</p>
+        <p className="status-message error">
+          Staff users cannot access reports.
+        </p>
       ) : (
         <>
-      <p className="status-message subtle report-intro">
-        Review past months here. Use the month controls above to change the report period.
-      </p>
-
-      {error && <p className="status-message error">{error}</p>}
-      {loading && <p className="status-message">Loading...</p>}
-
-      {!loading && summary && (
-        <>
-          <section className="sub-panel">
-            <div className="chart-panel-header">
-              <h3 className="sub-panel-title">Selected Month Summary</h3>
-              <span className="chart-panel-meta">{summary.month}</span>
+          <div className="dashboard-topbar">
+            <div>
+              <p className="status-message subtle report-intro">
+                Click any month row to expand details for that month.
+              </p>
             </div>
-
-            {monthHasActivity ? (
-              <div className="summary-grid">
-                <article className="stat-card">
-                  <span className="stat-label">Opening Balance</span>
-                  <strong>{formatCurrency(summary.opening_balance)}</strong>
-                </article>
-                <article className="stat-card">
-                  <span className="stat-label">Total Income</span>
-                  <strong>{formatCurrency(summary.total_income)}</strong>
-                </article>
-                <article className="stat-card">
-                  <span className="stat-label">Expenses</span>
-                  <strong>{formatCurrency(summary.total_expense)}</strong>
-                </article>
-                <article className="stat-card">
-                  <span className="stat-label">Salaries</span>
-                  <strong>{formatCurrency(summary.total_salaries)}</strong>
-                </article>
-                <article className="stat-card highlight">
-                  <span className="stat-label">Net Profit</span>
-                  <strong>{formatCurrency(summary.monthly_balance)}</strong>
-                </article>
-                <article className="stat-card highlight">
-                  <span className="stat-label">Closing Balance</span>
-                  <strong>{formatCurrency(summary.closing_balance)}</strong>
-                </article>
+            <div className="dashboard-actions">
+              <div className="report-year-control">
+                <label className="field-group report-year-select">
+                  <span>Year</span>
+                  <select
+                    value={normalizedYear}
+                    onChange={(event) => setSelectedYear(event.target.value)}
+                  >
+                    {yearOptions.map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {normalizedYear !== latestYear && (
+                  <button
+                    type="button"
+                    className="secondary-button report-year-button"
+                    onClick={() => setSelectedYear(latestYear)}
+                  >
+                    Latest Year
+                  </button>
+                )}
               </div>
-            ) : (
-              <section className="empty-state-panel">
-                <h4>No activity recorded</h4>
-                <p>
-                  There is no income, expense, or salary activity for {summary.month}.
-                </p>
-                <div className="empty-state-metrics">
-                  <span>Opening Balance: {formatCurrency(summary.opening_balance)}</span>
-                  <span>Closing Balance: {formatCurrency(summary.closing_balance)}</span>
-                </div>
-              </section>
-            )}
-          </section>
+            </div>
+          </div>
 
-          {yearOverview && (
+          {yearError && <p className="status-message error">{yearError}</p>}
+          {loadingYear && <p className="status-message">Loading...</p>}
+
+          {!loadingYear && yearOverview && (
             <section className="sub-panel">
               <div className="chart-panel-header">
-                <h3 className="sub-panel-title">Year Overview</h3>
-                <span className="chart-panel-meta">{yearOverview.year}</span>
+                <h3 className="sub-panel-title">
+                  Year Overview - {yearOverview.year}
+                </h3>
               </div>
 
               <div className="report-table-wrap">
@@ -158,23 +195,113 @@ export default function Reports({ token, onUnauthorized, selectedMonth }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {yearOverview.months.map((month) => (
-                      <tr key={month.month_key}>
-                        <td>{month.month}</td>
-                        <td>{formatCurrency(month.total_income)}</td>
-                        <td>{formatCurrency(month.total_expense)}</td>
-                        <td>{formatCurrency(month.total_salaries)}</td>
-                        <td>{formatCurrency(month.net_profit)}</td>
-                        <td>{formatCurrency(month.closing_balance)}</td>
-                      </tr>
-                    ))}
+                    {yearOverview.months.map((month) => {
+                      const isExpanded = expandedMonthKey === month.month_key;
+
+                      return (
+                        <Fragment key={month.month_key}>
+                          <tr
+                            className={
+                              isExpanded
+                                ? "report-row-expanded"
+                                : "report-row-clickable"
+                            }
+                            role="button"
+                            tabIndex={0}
+                            aria-expanded={isExpanded}
+                            onClick={() =>
+                              setExpandedMonthKey((current) =>
+                                current === month.month_key
+                                  ? null
+                                  : month.month_key,
+                              )
+                            }
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                setExpandedMonthKey((current) =>
+                                  current === month.month_key
+                                    ? null
+                                    : month.month_key,
+                                );
+                              }
+                            }}
+                          >
+                            <td>{month.month}</td>
+                            <td>{formatCurrency(month.total_income)}</td>
+                            <td>{formatCurrency(month.total_expense)}</td>
+                            <td>{formatCurrency(month.total_salaries)}</td>
+                            <td>{formatCurrency(month.net_profit)}</td>
+                            <td>{formatCurrency(month.closing_balance)}</td>
+                          </tr>
+                          {isExpanded && (
+                            <tr className="report-row-details">
+                              <td colSpan={6}>
+                                <div className="summary-grid">
+                                  <article className="stat-card">
+                                    <span className="stat-label">
+                                      Opening Balance
+                                    </span>
+                                    <strong>
+                                      {formatCurrency(month.opening_balance)}
+                                    </strong>
+                                  </article>
+                                  <article className="stat-card">
+                                    <span className="stat-label">
+                                      Spare Parts Income
+                                    </span>
+                                    <strong>
+                                      {formatCurrency(month.spare_parts_income)}
+                                    </strong>
+                                  </article>
+                                  <article className="stat-card">
+                                    <span className="stat-label">
+                                      Labor Income
+                                    </span>
+                                    <strong>
+                                      {formatCurrency(month.labor_income)}
+                                    </strong>
+                                  </article>
+                                  <article className="stat-card">
+                                    <span className="stat-label">Expenses</span>
+                                    <strong>
+                                      {formatCurrency(month.total_expense)}
+                                    </strong>
+                                  </article>
+                                  <article className="stat-card">
+                                    <span className="stat-label">Salaries</span>
+                                    <strong>
+                                      {formatCurrency(month.total_salaries)}
+                                    </strong>
+                                  </article>
+                                  <article className="stat-card highlight">
+                                    <span className="stat-label">
+                                      Net Profit
+                                    </span>
+                                    <strong>
+                                      {formatCurrency(month.net_profit)}
+                                    </strong>
+                                  </article>
+                                  <article className="stat-card highlight">
+                                    <span className="stat-label">
+                                      Closing Balance
+                                    </span>
+                                    <strong>
+                                      {formatCurrency(month.closing_balance)}
+                                    </strong>
+                                  </article>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
             </section>
           )}
-        </>
-      )}
         </>
       )}
     </section>

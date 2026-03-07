@@ -182,8 +182,8 @@
 }
 
 .month-panel-header {
-  display: grid;
-  grid-template-columns: auto minmax(160px, 1fr) auto auto auto auto auto;
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   align-items: center;
 }
@@ -191,6 +191,7 @@
 .month-current {
   display: grid;
   gap: 4px;
+  margin-right: auto;
 }
 
 .month-current-label {
@@ -756,6 +757,21 @@
   flex-wrap: wrap;
 }
 
+.report-year-control {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.report-year-select {
+  min-width: 180px;
+}
+
+.report-year-button {
+  white-space: nowrap;
+}
+
 .dashboard-filter-panel {
   margin-bottom: 14px;
 }
@@ -1154,6 +1170,26 @@
   background: #fbfcfd;
 }
 
+.report-row-clickable,
+.report-row-expanded {
+  cursor: pointer;
+}
+
+.report-row-clickable:focus-visible,
+.report-row-expanded:focus-visible {
+  outline: 2px solid #7ea4c2;
+  outline-offset: -2px;
+}
+
+.report-row-expanded {
+  background: #f8fafc;
+}
+
+.report-row-details td {
+  background: #fbfcfd;
+  white-space: normal;
+}
+
 .settings-grid {
   display: grid;
   gap: 14px;
@@ -1400,9 +1436,9 @@
   }
 
   .month-panel-header > .month-toggle-button {
-    order: 3;
+    order: 2;
+    flex: 1 1 100%;
     width: 100%;
-    min-width: 0;
   }
 
   .month-grid {
@@ -1448,6 +1484,15 @@
   .donut-grid {
     grid-template-columns: 1fr;
     min-width: 0;
+  }
+
+  .report-year-control {
+    width: 100%;
+  }
+
+  .report-year-select {
+    min-width: 0;
+    width: 100%;
   }
 
   .field-wide,

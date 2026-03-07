@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import "./App.css";
 import AppLayout from "./components/AppLayout";
@@ -9,37 +9,33 @@ import Income from "./pages/Income";
 import Expense from "./pages/Expense";
 import Salaries from "./pages/Salaries";
 import Settings from "./pages/Settings";
-import { getDefaultMonthKey } from "./lib/months";
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem("access"));
-  const [selectedMonth, setSelectedMonth] = useState(getDefaultMonthKey);
-  const [monthTotalsVersion, setMonthTotalsVersion] = useState(0);
   const [dataVersion, setDataVersion] = useState(0);
   const [settingsVersion, setSettingsVersion] = useState(0);
 
-  const handleLogin = (nextToken) => {
+  const handleLogin = useCallback((nextToken) => {
     setToken(nextToken);
-  };
+  }, []);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     localStorage.removeItem("access");
     localStorage.removeItem("refresh");
     setToken(null);
-  };
+  }, []);
 
-  const handleIncomeChanged = () => {
-    setMonthTotalsVersion((currentVersion) => currentVersion + 1);
-  };
-
-  const handleDataImported = () => {
-    setMonthTotalsVersion((currentVersion) => currentVersion + 1);
+  const handleIncomeChanged = useCallback(() => {
     setDataVersion((currentVersion) => currentVersion + 1);
-  };
+  }, []);
 
-  const handleSettingsSaved = () => {
+  const handleDataImported = useCallback(() => {
+    setDataVersion((currentVersion) => currentVersion + 1);
+  }, []);
+
+  const handleSettingsSaved = useCallback(() => {
     setSettingsVersion((currentVersion) => currentVersion + 1);
-  };
+  }, []);
 
   return (
     <BrowserRouter>
@@ -56,11 +52,8 @@ function App() {
                 token={token}
                 onLogout={handleLogout}
                 onUnauthorized={handleLogout}
-                monthTotalsVersion={monthTotalsVersion}
                 settingsVersion={settingsVersion}
                 onDataImported={handleDataImported}
-                selectedMonth={selectedMonth}
-                onMonthChange={setSelectedMonth}
               />
             ) : (
               <Navigate to="/login" replace />
@@ -81,10 +74,9 @@ function App() {
             path="/reports"
             element={
               <Reports
-                key={`reports-${selectedMonth}-${dataVersion}`}
+                key={`reports-${dataVersion}`}
                 token={token}
                 onUnauthorized={handleLogout}
-                selectedMonth={selectedMonth}
               />
             }
           />

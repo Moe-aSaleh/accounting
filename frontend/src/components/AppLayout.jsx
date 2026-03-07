@@ -1,26 +1,19 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import {
   fetchProtectedJson,
   uploadProtectedFile,
 } from "../lib/api";
-import { formatCurrency } from "../lib/format";
 
 export default function AppLayout({
   token,
   onLogout,
   onUnauthorized,
-  monthTotalsVersion,
   settingsVersion,
   onDataImported,
-  selectedMonth,
-  onMonthChange,
 }) {
   const location = useLocation();
-  const [isMonthPanelOpen, setIsMonthPanelOpen] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-  const [monthTiles, setMonthTiles] = useState([]);
-  const [monthTotals, setMonthTotals] = useState({});
   const [companySettings, setCompanySettings] = useState(null);
   const [importMessage, setImportMessage] = useState("");
   const [importError, setImportError] = useState("");
@@ -28,49 +21,6 @@ export default function AppLayout({
   const fileInputRef = useRef(null);
   const navClassName = ({ isActive }) =>
     isActive ? "app-nav-link active" : "app-nav-link";
-  const monthOptions = useMemo(() => {
-    const options = [...monthTiles]
-      .sort((left, right) => left.month_key.localeCompare(right.month_key))
-      .map((tile) => ({
-        key: tile.month_key,
-        label: tile.label,
-      }));
-
-    if (options.length === 0) {
-      return [{ key: selectedMonth, label: selectedMonth }];
-    }
-
-    if (!options.some((option) => option.key === selectedMonth)) {
-      options.push({ key: selectedMonth, label: selectedMonth });
-      options.sort((left, right) => left.key.localeCompare(right.key));
-    }
-
-    return options;
-  }, [monthTiles, selectedMonth]);
-  const monthGroups = useMemo(() => {
-    const groups = new Map();
-
-    monthOptions.forEach((monthOption) => {
-      const year = Number(monthOption.key.split("-")[0]);
-      if (!groups.has(year)) {
-        groups.set(year, []);
-      }
-      groups.get(year).push(monthOption);
-    });
-
-    return [...groups.entries()]
-      .sort((left, right) => left[0] - right[0])
-      .map(([year, months]) => ({
-        year,
-        months: months.sort((left, right) => left.key.localeCompare(right.key)),
-      }));
-  }, [monthOptions]);
-  const selectedMonthIndex = monthOptions.findIndex((month) => month.key === selectedMonth);
-  const selectedMonthMatch = monthOptions.find((month) => month.key === selectedMonth);
-  const selectedMonthYear = selectedMonth.split("-")[0];
-  const selectedMonthLabel = selectedMonthMatch
-    ? `${selectedMonthMatch.label} ${selectedMonthYear}`
-    : selectedMonth;
   const routeTitle = {
     "/": "Dashboard",
     "/reports": "Reports",
@@ -129,49 +79,6 @@ export default function AppLayout({
   }, [isMobileNavOpen]);
 
   useEffect(() => {
-    if (!showReportControls) {
-      setMonthTotals({});
-      setMonthTiles([]);
-      return;
-    }
-
-    let isActive = true;
-
-    const loadMonthOverview = async () => {
-      try {
-        const data = await fetchProtectedJson("/api/month-overview/", {
-          token,
-          onUnauthorized,
-          fallbackMessage: "Failed to load month totals.",
-        });
-
-        if (!isActive || data === null) {
-          return;
-        }
-
-        const nextTotals = data.reduce((totals, month) => {
-          totals[month.month_key] = month.total_income;
-          return totals;
-        }, {});
-
-        setMonthTotals(nextTotals);
-        setMonthTiles(data);
-      } catch {
-        if (isActive) {
-          setMonthTotals({});
-          setMonthTiles([]);
-        }
-      }
-    };
-
-    loadMonthOverview();
-
-    return () => {
-      isActive = false;
-    };
-  }, [token, onUnauthorized, monthTotalsVersion, showReportControls]);
-
-  useEffect(() => {
     let isActive = true;
 
     const loadCompanySettings = async () => {
@@ -200,16 +107,6 @@ export default function AppLayout({
       isActive = false;
     };
   }, [token, onUnauthorized, settingsVersion]);
-
-  const handleStepMonth = (direction) => {
-    const nextIndex = selectedMonthIndex + direction;
-
-    if (nextIndex < 0 || nextIndex >= monthOptions.length) {
-      return;
-    }
-
-    onMonthChange(monthOptions[nextIndex].key);
-  };
 
   const handleImportClick = () => {
     setImportMessage("");
@@ -272,7 +169,6 @@ export default function AppLayout({
         onUnauthorized,
         fallbackMessage: "Failed to import the CSV file.",
         file,
-        query: { month: selectedMonth },
       });
 
       if (result) {
@@ -385,38 +281,12 @@ export default function AppLayout({
         </header>
 
         {showReportControls && (
-        <section className="month-panel" aria-label="Month selector">
+        <section className="month-panel" aria-label="Report data tools">
           <div className="month-panel-header">
-            <button
-              type="button"
-              className="month-nav-button"
-              onClick={() => handleStepMonth(-1)}
-              disabled={selectedMonthIndex <= 0}
-            >
-              ←
-            </button>
-
             <div className="month-current">
-              <span className="month-current-label">Viewing</span>
-              <strong>{selectedMonthLabel}</strong>
+              <span className="month-current-label">Data Tools</span>
+              <strong>CSV Import & Templates</strong>
             </div>
-
-            <button
-              type="button"
-              className="month-nav-button"
-              onClick={() => handleStepMonth(1)}
-              disabled={selectedMonthIndex >= monthOptions.length - 1}
-            >
-              →
-            </button>
-
-            <button
-              type="button"
-              className="secondary-button month-toggle-button"
-              onClick={() => setIsMonthPanelOpen((current) => !current)}
-            >
-              {isMonthPanelOpen ? "Hide Months" : "Choose Month"}
-            </button>
 
             {canManageProtectedActions && (
               <button
@@ -456,30 +326,6 @@ export default function AppLayout({
 
           {importMessage && <p className="status-message success">{importMessage}</p>}
           {importError && <p className="status-message error">{importError}</p>}
-
-          {isMonthPanelOpen &&
-            monthGroups.map((group) => (
-              <div key={group.year} className="month-group">
-                <p className="month-group-title">{group.year}</p>
-                <div className="month-grid">
-                  {group.months.map((month) => (
-                    <button
-                      key={month.key}
-                      type="button"
-                      className={
-                        month.key === selectedMonth
-                          ? "month-button active"
-                          : "month-button"
-                      }
-                      onClick={() => onMonthChange(month.key)}
-                    >
-                      <span>{month.label}</span>
-                      <small>{formatCurrency(monthTotals[month.key])}</small>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
         </section>
         )}
 
