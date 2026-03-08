@@ -2,6 +2,11 @@ const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000"
 ).replace(/\/$/, "");
 
+export function clearStoredTokens() {
+  localStorage.removeItem("access");
+  localStorage.removeItem("refresh");
+}
+
 export function buildApiUrl(path, query) {
   const url = new URL(`${API_BASE_URL}${path}`);
 
@@ -20,11 +25,13 @@ function getAccessToken(token) {
   return localStorage.getItem("access") || token;
 }
 
-async function refreshAccessToken(onUnauthorized) {
+export async function refreshAccessToken({ onUnauthorized, failSilently = false } = {}) {
   const refreshToken = localStorage.getItem("refresh");
 
   if (!refreshToken) {
-    onUnauthorized();
+    if (!failSilently) {
+      onUnauthorized?.();
+    }
     return null;
   }
 
@@ -45,11 +52,17 @@ async function refreshAccessToken(onUnauthorized) {
   }
 
   if (!response.ok || !payload?.access) {
-    onUnauthorized();
+    clearStoredTokens();
+    if (!failSilently) {
+      onUnauthorized?.();
+    }
     return null;
   }
 
   localStorage.setItem("access", payload.access);
+  if (payload.refresh) {
+    localStorage.setItem("refresh", payload.refresh);
+  }
   return payload.access;
 }
 
@@ -86,7 +99,7 @@ async function requestProtected(
   }
 
   if (response.status === 401) {
-    const nextAccessToken = await refreshAccessToken(onUnauthorized);
+    const nextAccessToken = await refreshAccessToken({ onUnauthorized });
 
     if (!nextAccessToken) {
       return null;

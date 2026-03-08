@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import "./App.css";
 import AppLayout from "./components/AppLayout";
@@ -9,19 +9,67 @@ import Income from "./pages/Income";
 import Expense from "./pages/Expense";
 import Salaries from "./pages/Salaries";
 import Settings from "./pages/Settings";
+import { clearStoredTokens, refreshAccessToken } from "./lib/api";
 
 function App() {
-  const [token, setToken] = useState(localStorage.getItem("access"));
+  const [token, setToken] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
   const [dataVersion, setDataVersion] = useState(0);
   const [settingsVersion, setSettingsVersion] = useState(0);
 
+  useEffect(() => {
+    let isActive = true;
+
+    const bootstrapAuth = async () => {
+      const storedAccess = localStorage.getItem("access");
+      const storedRefresh = localStorage.getItem("refresh");
+
+      if (!storedAccess && !storedRefresh) {
+        if (isActive) {
+          setToken(null);
+          setAuthReady(true);
+        }
+        return;
+      }
+
+      if (storedRefresh) {
+        const nextAccessToken = await refreshAccessToken({ failSilently: true });
+
+        if (!isActive) {
+          return;
+        }
+
+        if (nextAccessToken) {
+          setToken(nextAccessToken);
+        } else {
+          clearStoredTokens();
+          setToken(null);
+        }
+
+        setAuthReady(true);
+        return;
+      }
+
+      if (isActive) {
+        setToken(storedAccess);
+        setAuthReady(true);
+      }
+    };
+
+    bootstrapAuth();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
   const handleLogin = useCallback((nextToken) => {
     setToken(nextToken);
+    setAuthReady(true);
   }, []);
 
   const handleLogout = useCallback(() => {
-    localStorage.removeItem("access");
-    localStorage.removeItem("refresh");
+    clearStoredTokens();
     setToken(null);
   }, []);
 
@@ -36,6 +84,20 @@ function App() {
   const handleSettingsSaved = useCallback(() => {
     setSettingsVersion((currentVersion) => currentVersion + 1);
   }, []);
+
+  if (!authReady) {
+    return (
+      <div className="page-shell auth-shell">
+        <div className="panel auth-panel">
+          <h1>Loading session</h1>
+          <div className="button-with-spinner">
+            <span className="button-spinner" aria-hidden="true" />
+            <span className="status-message subtle">Checking your account...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <BrowserRouter>
