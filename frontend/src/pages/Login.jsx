@@ -17,23 +17,17 @@ export default function Login({ onLogin }) {
     try {
       const res = await fetch(buildApiUrl("/api/token/"), {
         method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
 
       let data = null;
+      try { data = await res.json(); } catch { data = null; }
 
-      try {
-        data = await res.json();
-      } catch {
-        data = null;
-      }
-
-      if (res.ok) {
-        onLogin();
+      if (res.ok && data?.access) {
+        localStorage.setItem("access", data.access);
+        localStorage.setItem("refresh", data.refresh);
+        onLogin(data.access);
         navigate("/");
       } else {
         setError(getApiErrorMessage(data, "Invalid credentials"));
@@ -74,12 +68,7 @@ export default function Login({ onLogin }) {
             />
           </label>
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="ws-btn-wide"
-            style={{ marginTop: "6px" }}
-          >
+          <button type="submit" disabled={submitting} className="ws-btn-wide" style={{ marginTop: "6px" }}>
             {submitting ? (
               <>
                 <span className="ws-spinner" aria-hidden="true" />

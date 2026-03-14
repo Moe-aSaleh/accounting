@@ -9,10 +9,10 @@ import Income from "./pages/Income";
 import Expense from "./pages/Expense";
 import Salaries from "./pages/Salaries";
 import Settings from "./pages/Settings";
-import { logoutUser, refreshAccessToken } from "./lib/api";
+import { clearStoredTokens, refreshAccessToken } from "./lib/api";
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [token, setToken] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [dataVersion, setDataVersion] = useState(0);
   const [settingsVersion, setSettingsVersion] = useState(0);
@@ -21,41 +21,54 @@ function App() {
     let isActive = true;
 
     const bootstrapAuth = async () => {
-      const refreshed = await refreshAccessToken({ failSilently: true });
+      const storedAccess = localStorage.getItem("access");
+      const storedRefresh = localStorage.getItem("refresh");
 
-      if (isActive) {
-        setIsAuthenticated(refreshed);
-        setAuthReady(true);
+      if (!storedAccess && !storedRefresh) {
+        if (isActive) { setToken(null); setAuthReady(true); }
+        return;
       }
+
+      if (storedRefresh) {
+        const nextAccessToken = await refreshAccessToken({ failSilently: true });
+        if (!isActive) return;
+        if (nextAccessToken) {
+          setToken(nextAccessToken);
+        } else {
+          clearStoredTokens();
+          setToken(null);
+        }
+        setAuthReady(true);
+        return;
+      }
+
+      if (isActive) { setToken(storedAccess); setAuthReady(true); }
     };
 
     bootstrapAuth();
-
-    return () => {
-      isActive = false;
-    };
+    return () => { isActive = false; };
   }, []);
 
-  const handleLogin = useCallback(() => {
-    setIsAuthenticated(true);
+  const handleLogin = useCallback((nextToken) => {
+    setToken(nextToken);
     setAuthReady(true);
   }, []);
 
-  const handleLogout = useCallback(async () => {
-    await logoutUser();
-    setIsAuthenticated(false);
+  const handleLogout = useCallback(() => {
+    clearStoredTokens();
+    setToken(null);
   }, []);
 
   const handleIncomeChanged = useCallback(() => {
-    setDataVersion((currentVersion) => currentVersion + 1);
+    setDataVersion((v) => v + 1);
   }, []);
 
   const handleDataImported = useCallback(() => {
-    setDataVersion((currentVersion) => currentVersion + 1);
+    setDataVersion((v) => v + 1);
   }, []);
 
   const handleSettingsSaved = useCallback(() => {
-    setSettingsVersion((currentVersion) => currentVersion + 1);
+    setSettingsVersion((v) => v + 1);
   }, []);
 
   if (!authReady) {
@@ -77,13 +90,13 @@ function App() {
       <Routes>
         <Route
           path="/login"
-          element={isAuthenticated ? <Navigate to="/" replace /> : <Login onLogin={handleLogin} />}
+          element={token ? <Navigate to="/" replace /> : <Login onLogin={handleLogin} />}
         />
-
         <Route
           element={
-            isAuthenticated ? (
+            token ? (
               <AppLayout
+                token={token}
                 onLogout={handleLogout}
                 onUnauthorized={handleLogout}
                 settingsVersion={settingsVersion}
@@ -94,70 +107,14 @@ function App() {
             )
           }
         >
-          <Route
-            path="/"
-            element={
-              <Dashboard
-                key={`dashboard-${dataVersion}`}
-                onUnauthorized={handleLogout}
-              />
-            }
-          />
-          <Route
-            path="/reports"
-            element={
-              <Reports
-                key={`reports-${dataVersion}`}
-                onUnauthorized={handleLogout}
-              />
-            }
-          />
-          <Route
-            path="/income"
-            element={
-              <Income
-                key={`income-${dataVersion}`}
-                onUnauthorized={handleLogout}
-                onIncomeChanged={handleIncomeChanged}
-              />
-            }
-          />
-          <Route
-            path="/expense"
-            element={
-              <Expense
-                key={`expense-${dataVersion}`}
-                onUnauthorized={handleLogout}
-              />
-            }
-          />
-          <Route
-            path="/salaries"
-            element={
-              <Salaries
-                key={`salaries-${dataVersion}`}
-                onUnauthorized={handleLogout}
-              />
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <Settings
-                onUnauthorized={handleLogout}
-                onLogout={handleLogout}
-                onSettingsSaved={handleSettingsSaved}
-              />
-            }
-          />
+          <Route path="/" element={<Dashboard key={`dashboard-${dataVersion}`} token={token} onUnauthorized={handleLogout} />} />
+          <Route path="/reports" element={<Reports key={`reports-${dataVersion}`} token={token} onUnauthorized={handleLogout} />} />
+          <Route path="/income" element={<Income key={`income-${dataVersion}`} token={token} onUnauthorized={handleLogout} onIncomeChanged={handleIncomeChanged} />} />
+          <Route path="/expense" element={<Expense key={`expense-${dataVersion}`} token={token} onUnauthorized={handleLogout} />} />
+          <Route path="/salaries" element={<Salaries key={`salaries-${dataVersion}`} token={token} onUnauthorized={handleLogout} />} />
+          <Route path="/settings" element={<Settings token={token} onUnauthorized={handleLogout} onLogout={handleLogout} onSettingsSaved={handleSettingsSaved} />} />
         </Route>
-
-        <Route
-          path="*"
-          element={
-            <Navigate to={isAuthenticated ? "/" : "/login"} replace />
-          }
-        />
+        <Route path="*" element={<Navigate to={token ? "/" : "/login"} replace />} />
       </Routes>
     </BrowserRouter>
   );
