@@ -1,10 +1,6 @@
 {
   "rewrites": [
     {
-      "source": "/backend/:path*",
-      "destination": "https://accounting-backend-gwqj.onrender.com/:path*"
-    },
-    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
