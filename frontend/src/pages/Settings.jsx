@@ -8,7 +8,6 @@ import {
 } from "../lib/api";
 
 export default function Settings({
-  token,
   onUnauthorized,
   onLogout,
   onSettingsSaved,
@@ -56,7 +55,6 @@ export default function Settings({
     const loadSettings = async () => {
       try {
         const data = await fetchProtectedJson("/api/company-settings/", {
-          token,
           onUnauthorized,
           fallbackMessage: "Failed to load company settings.",
         });
@@ -81,7 +79,6 @@ export default function Settings({
         }
 
         const userData = await fetchProtectedJson("/api/company-users/", {
-          token,
           onUnauthorized,
           fallbackMessage: "Failed to load users.",
         });
@@ -116,7 +113,7 @@ export default function Settings({
     return () => {
       isActive = false;
     };
-  }, [token, onUnauthorized, currentUserRole]);
+  }, [onUnauthorized, currentUserRole]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -134,7 +131,6 @@ export default function Settings({
 
     try {
       const result = await putProtectedJson("/api/company-settings/", {
-        token,
         onUnauthorized,
         fallbackMessage: "Failed to save company settings.",
         body: values,
@@ -175,7 +171,6 @@ export default function Settings({
 
     try {
       const result = await putProtectedJson(`/api/company-users/${profileId}/role/`, {
-        token,
         onUnauthorized,
         fallbackMessage: "Failed to update user role.",
         body: { role: roleDrafts[profileId] },
@@ -219,7 +214,6 @@ export default function Settings({
 
     try {
       const result = await postProtectedJson("/api/company-users/create/", {
-        token,
         onUnauthorized,
         fallbackMessage: "Failed to create user.",
         body: newUserValues,
@@ -262,7 +256,6 @@ export default function Settings({
 
     try {
       const result = await postProtectedAction("/api/clear-month/", {
-        token,
         onUnauthorized,
         fallbackMessage: "Failed to clear month records.",
         query: { month: maintenanceMonth },
@@ -302,7 +295,6 @@ export default function Settings({
 
     try {
       const result = await postProtectedAction("/api/clear-year/", {
-        token,
         onUnauthorized,
         fallbackMessage: "Failed to clear year records.",
         query: { year: maintenanceYear },

@@ -9,6 +9,7 @@ from .views import (
     IncomeViewSet,
     ExpenseViewSet,
     SalaryViewSet,
+    logout_view,
     summary_view,
     available_years_view,
     month_overview_view,
@@ -24,6 +25,7 @@ router.register(r'expense', ExpenseViewSet, basename='expense')
 router.register(r'salaries', SalaryViewSet, basename='salaries')
 
 urlpatterns = router.urls + [
+    path('logout/', logout_view),
     path('summary/', summary_view),
     path('available-years/', available_years_view),
     path('month-overview/', month_overview_view),

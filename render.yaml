@@ -10,6 +10,8 @@ services:
         sync: false
       - key: DJANGO_SECRET_KEY
         sync: false
+      - key: DJANGO_JWT_SIGNING_KEY
+        sync: false
       - key: DJANGO_DEBUG
         value: "False"
       - key: DJANGO_ALLOWED_HOSTS

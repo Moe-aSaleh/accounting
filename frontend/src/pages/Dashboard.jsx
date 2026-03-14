@@ -38,7 +38,7 @@ function hasMonthActivity(summary) {
   );
 }
 
-export default function Dashboard({ token, onUnauthorized }) {
+export default function Dashboard({ onUnauthorized }) {
   const { currentUserRole = null } = useOutletContext();
   const canCreateRecords =
     currentUserRole === "owner" ||
@@ -60,16 +60,11 @@ export default function Dashboard({ token, onUnauthorized }) {
   const selectedYearNumber = Number(normalizedYear);
 
   useEffect(() => {
-    if (!token) {
-      return;
-    }
-
     let isActive = true;
 
     const loadAvailableYears = async () => {
       try {
         const payload = await fetchProtectedJson("/api/available-years/", {
-          token,
           onUnauthorized,
           fallbackMessage: "Failed to load available years.",
         });
@@ -104,13 +99,9 @@ export default function Dashboard({ token, onUnauthorized }) {
     return () => {
       isActive = false;
     };
-  }, [token, onUnauthorized]);
+  }, [onUnauthorized]);
 
   useEffect(() => {
-    if (!token) {
-      return;
-    }
-
     let isActive = true;
 
     const loadSummary = async () => {
@@ -118,7 +109,6 @@ export default function Dashboard({ token, onUnauthorized }) {
 
       try {
         const nextSummary = await fetchProtectedJson("/api/summary/", {
-          token,
           onUnauthorized,
           fallbackMessage: "Failed to load dashboard month data.",
           query: { month: selectedMonthKey },
@@ -147,13 +137,9 @@ export default function Dashboard({ token, onUnauthorized }) {
     return () => {
       isActive = false;
     };
-  }, [token, onUnauthorized, selectedMonthKey]);
+  }, [onUnauthorized, selectedMonthKey]);
 
   useEffect(() => {
-    if (!token) {
-      return;
-    }
-
     let isActive = true;
 
     const loadYearOverview = async () => {
@@ -161,7 +147,6 @@ export default function Dashboard({ token, onUnauthorized }) {
 
       try {
         const nextYearOverview = await fetchProtectedJson("/api/year-overview/", {
-          token,
           onUnauthorized,
           fallbackMessage: "Failed to load dashboard year data.",
           query: { year: selectedYearNumber },
@@ -190,7 +175,7 @@ export default function Dashboard({ token, onUnauthorized }) {
     return () => {
       isActive = false;
     };
-  }, [token, onUnauthorized, selectedYearNumber]);
+  }, [onUnauthorized, selectedYearNumber]);
 
   const yearTotals =
     yearOverview?.months.reduce(

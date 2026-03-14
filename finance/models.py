@@ -37,22 +37,32 @@ class UserProfile(models.Model):
 
 class Income(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     spare_parts_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     labor_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     description = models.CharField(max_length=255)
     date = models.DateField()
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["company", "date"]),
+        ]
+
     def __str__(self):
         return f"{self.description} - {self.amount}"
-    
+
 class Expense(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.CharField(max_length=255)
     date = models.DateField()
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["company", "date"]),
+        ]
 
     def __str__(self):
         return f"{self.description} - {self.amount}"
@@ -71,7 +81,7 @@ class Salary(models.Model):
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE)
     employee_name = models.CharField(max_length=255)
     salary_type = models.CharField(
         max_length=20,
@@ -92,6 +102,11 @@ class Salary(models.Model):
     )
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     date = models.DateField()
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["company", "date"]),
+        ]
 
     def __str__(self):
         return f"{self.employee_name} - {self.amount}"

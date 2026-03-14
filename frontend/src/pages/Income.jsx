@@ -26,7 +26,7 @@ const MONTH_OPTIONS = [
   ["12", "December"],
 ];
 
-export default function Income({ token, onUnauthorized, onIncomeChanged }) {
+export default function Income({ onUnauthorized, onIncomeChanged }) {
   const { currentUserRole = null } = useOutletContext();
   const canModifyRecords = currentUserRole !== "viewer";
   const [searchParams, setSearchParams] = useSearchParams();
@@ -52,7 +52,6 @@ export default function Income({ token, onUnauthorized, onIncomeChanged }) {
     const loadIncome = async () => {
       try {
         const data = await fetchProtectedJson("/api/income/", {
-          token,
           onUnauthorized,
           fallbackMessage: "Failed to load income data.",
         });
@@ -79,7 +78,7 @@ export default function Income({ token, onUnauthorized, onIncomeChanged }) {
     return () => {
       isActive = false;
     };
-  }, [token, onUnauthorized]);
+  }, [onUnauthorized]);
 
   const yearOptions = useMemo(() => {
     const years = [...new Set(incomes.map((item) => item.date.slice(0, 4)))].sort((left, right) =>
@@ -90,7 +89,6 @@ export default function Income({ token, onUnauthorized, onIncomeChanged }) {
 
   const handleCreateIncome = async (values) => {
     const createdIncome = await postProtectedJson("/api/income/", {
-      token,
       onUnauthorized,
       fallbackMessage: "Failed to create income record.",
       body: values,
@@ -114,7 +112,6 @@ export default function Income({ token, onUnauthorized, onIncomeChanged }) {
     }
 
     const updatedIncome = await putProtectedJson(`/api/income/${editingIncome.id}/`, {
-      token,
       onUnauthorized,
       fallbackMessage: "Failed to update income record.",
       body: values,
@@ -142,7 +139,6 @@ export default function Income({ token, onUnauthorized, onIncomeChanged }) {
 
     try {
       const deleted = await deleteProtected(`/api/income/${incomeId}/`, {
-        token,
         onUnauthorized,
         fallbackMessage: "Failed to delete income record.",
       });

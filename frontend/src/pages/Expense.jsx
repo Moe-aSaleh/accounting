@@ -26,7 +26,7 @@ const MONTH_OPTIONS = [
   ["12", "December"],
 ];
 
-export default function Expense({ token, onUnauthorized }) {
+export default function Expense({ onUnauthorized }) {
   const { currentUserRole = null } = useOutletContext();
   const canModifyRecords = currentUserRole !== "viewer";
   const [searchParams, setSearchParams] = useSearchParams();
@@ -52,7 +52,6 @@ export default function Expense({ token, onUnauthorized }) {
     const loadExpenses = async () => {
       try {
         const data = await fetchProtectedJson("/api/expense/", {
-          token,
           onUnauthorized,
           fallbackMessage: "Failed to load expense data.",
         });
@@ -79,7 +78,7 @@ export default function Expense({ token, onUnauthorized }) {
     return () => {
       isActive = false;
     };
-  }, [token, onUnauthorized]);
+  }, [onUnauthorized]);
 
   const yearOptions = useMemo(() => {
     const years = [...new Set(expenses.map((item) => item.date.slice(0, 4)))].sort((left, right) =>
@@ -90,7 +89,6 @@ export default function Expense({ token, onUnauthorized }) {
 
   const handleCreateExpense = async (values) => {
     const createdExpense = await postProtectedJson("/api/expense/", {
-      token,
       onUnauthorized,
       fallbackMessage: "Failed to create expense record.",
       body: values,
@@ -113,7 +111,6 @@ export default function Expense({ token, onUnauthorized }) {
     }
 
     const updatedExpense = await putProtectedJson(`/api/expense/${editingExpense.id}/`, {
-      token,
       onUnauthorized,
       fallbackMessage: "Failed to update expense record.",
       body: values,
@@ -140,7 +137,6 @@ export default function Expense({ token, onUnauthorized }) {
 
     try {
       const deleted = await deleteProtected(`/api/expense/${expenseId}/`, {
-        token,
         onUnauthorized,
         fallbackMessage: "Failed to delete expense record.",
       });

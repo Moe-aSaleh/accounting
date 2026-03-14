@@ -10,6 +10,8 @@ from datetime import timedelta
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
+from django.core.exceptions import ImproperlyConfigured
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -88,10 +90,16 @@ def build_database_config():
     return config
 
 
-SECRET_KEY = os.getenv(
-    "DJANGO_SECRET_KEY",
-    "django-insecure-change-me-before-production",
-)
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
+if not SECRET_KEY:
+    raise ImproperlyConfigured(
+        "DJANGO_SECRET_KEY environment variable is not set. "
+        "Set it to a long random secret string before starting the server."
+    )
+
+# Separate signing key for JWT tokens — can be rotated independently of SECRET_KEY.
+# Falls back to SECRET_KEY if not explicitly provided.
+JWT_SIGNING_KEY = os.environ.get("DJANGO_JWT_SIGNING_KEY") or SECRET_KEY
 
 DEBUG = env_bool("DJANGO_DEBUG", False)
 
@@ -110,6 +118,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "finance",
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
 ]
 
@@ -184,7 +193,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "finance.authentication.JWTCookieAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
@@ -198,6 +207,8 @@ REST_FRAMEWORK = {
         "user": os.getenv("DRF_THROTTLE_USER", "1000/hour"),
         "auth": os.getenv("DRF_THROTTLE_AUTH", "10/minute"),
     },
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 50,
 }
 
 SIMPLE_JWT = {
@@ -207,9 +218,11 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(
         days=int(os.getenv("JWT_REFRESH_DAYS", "1"))
     ),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
     "UPDATE_LAST_LOGIN": True,
     "AUTH_HEADER_TYPES": ("Bearer",),
-    "SIGNING_KEY": SECRET_KEY,
+    "SIGNING_KEY": JWT_SIGNING_KEY,
 }
 
 
@@ -237,9 +250,14 @@ SECURE_REFERRER_POLICY = "same-origin"
 SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
 X_FRAME_OPTIONS = "DENY"
 
+# JWT cookie security — mirrors HTTPS setting so cookies are secure in production
+# and work without TLS in development.
+JWT_COOKIE_SECURE = USE_HTTPS
+JWT_COOKIE_SAMESITE = "Strict"
+
 if USE_HTTPS:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-    SECURE_HSTS_SECONDS = int(os.getenv("DJANGO_HSTS_SECONDS", "3600"))
+    SECURE_HSTS_SECONDS = int(os.getenv("DJANGO_HSTS_SECONDS", "31536000"))
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
 else:

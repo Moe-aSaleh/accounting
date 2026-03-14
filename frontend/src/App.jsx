@@ -9,10 +9,10 @@ import Income from "./pages/Income";
 import Expense from "./pages/Expense";
 import Salaries from "./pages/Salaries";
 import Settings from "./pages/Settings";
-import { clearStoredTokens, refreshAccessToken } from "./lib/api";
+import { logoutUser, refreshAccessToken } from "./lib/api";
 
 function App() {
-  const [token, setToken] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [dataVersion, setDataVersion] = useState(0);
   const [settingsVersion, setSettingsVersion] = useState(0);
@@ -21,37 +21,10 @@ function App() {
     let isActive = true;
 
     const bootstrapAuth = async () => {
-      const storedAccess = localStorage.getItem("access");
-      const storedRefresh = localStorage.getItem("refresh");
-
-      if (!storedAccess && !storedRefresh) {
-        if (isActive) {
-          setToken(null);
-          setAuthReady(true);
-        }
-        return;
-      }
-
-      if (storedRefresh) {
-        const nextAccessToken = await refreshAccessToken({ failSilently: true });
-
-        if (!isActive) {
-          return;
-        }
-
-        if (nextAccessToken) {
-          setToken(nextAccessToken);
-        } else {
-          clearStoredTokens();
-          setToken(null);
-        }
-
-        setAuthReady(true);
-        return;
-      }
+      const refreshed = await refreshAccessToken({ failSilently: true });
 
       if (isActive) {
-        setToken(storedAccess);
+        setIsAuthenticated(refreshed);
         setAuthReady(true);
       }
     };
@@ -63,14 +36,14 @@ function App() {
     };
   }, []);
 
-  const handleLogin = useCallback((nextToken) => {
-    setToken(nextToken);
+  const handleLogin = useCallback(() => {
+    setIsAuthenticated(true);
     setAuthReady(true);
   }, []);
 
-  const handleLogout = useCallback(() => {
-    clearStoredTokens();
-    setToken(null);
+  const handleLogout = useCallback(async () => {
+    await logoutUser();
+    setIsAuthenticated(false);
   }, []);
 
   const handleIncomeChanged = useCallback(() => {
@@ -104,14 +77,13 @@ function App() {
       <Routes>
         <Route
           path="/login"
-          element={token ? <Navigate to="/" replace /> : <Login onLogin={handleLogin} />}
+          element={isAuthenticated ? <Navigate to="/" replace /> : <Login onLogin={handleLogin} />}
         />
 
         <Route
           element={
-            token ? (
+            isAuthenticated ? (
               <AppLayout
-                token={token}
                 onLogout={handleLogout}
                 onUnauthorized={handleLogout}
                 settingsVersion={settingsVersion}
@@ -127,7 +99,6 @@ function App() {
             element={
               <Dashboard
                 key={`dashboard-${dataVersion}`}
-                token={token}
                 onUnauthorized={handleLogout}
               />
             }
@@ -137,7 +108,6 @@ function App() {
             element={
               <Reports
                 key={`reports-${dataVersion}`}
-                token={token}
                 onUnauthorized={handleLogout}
               />
             }
@@ -147,7 +117,6 @@ function App() {
             element={
               <Income
                 key={`income-${dataVersion}`}
-                token={token}
                 onUnauthorized={handleLogout}
                 onIncomeChanged={handleIncomeChanged}
               />
@@ -158,7 +127,6 @@ function App() {
             element={
               <Expense
                 key={`expense-${dataVersion}`}
-                token={token}
                 onUnauthorized={handleLogout}
               />
             }
@@ -168,7 +136,6 @@ function App() {
             element={
               <Salaries
                 key={`salaries-${dataVersion}`}
-                token={token}
                 onUnauthorized={handleLogout}
               />
             }
@@ -177,7 +144,6 @@ function App() {
             path="/settings"
             element={
               <Settings
-                token={token}
                 onUnauthorized={handleLogout}
                 onLogout={handleLogout}
                 onSettingsSaved={handleSettingsSaved}
@@ -189,7 +155,7 @@ function App() {
         <Route
           path="*"
           element={
-            <Navigate to={token ? "/" : "/login"} replace />
+            <Navigate to={isAuthenticated ? "/" : "/login"} replace />
           }
         />
       </Routes>

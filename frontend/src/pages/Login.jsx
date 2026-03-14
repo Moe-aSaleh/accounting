@@ -17,6 +17,7 @@ export default function Login({ onLogin }) {
     try {
       const res = await fetch(buildApiUrl("/api/token/"), {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
@@ -31,10 +32,8 @@ export default function Login({ onLogin }) {
         data = null;
       }
 
-      if (res.ok && data.access) {
-        localStorage.setItem("access", data.access);
-        localStorage.setItem("refresh", data.refresh);
-        onLogin(data.access);
+      if (res.ok) {
+        onLogin();
         navigate("/");
       } else {
         setError(getApiErrorMessage(data, "Invalid credentials"));
@@ -54,11 +53,13 @@ export default function Login({ onLogin }) {
           <input
             placeholder="Username"
             value={username}
+            autoComplete="username"
             onChange={(e) => setUsername(e.target.value)}
           />
           <input
             type="password"
             placeholder="Password"
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />

@@ -30,7 +30,7 @@ function getCurrentMonthKey() {
   return new Date().toISOString().slice(0, 7);
 }
 
-export default function Salaries({ token, onUnauthorized }) {
+export default function Salaries({ onUnauthorized }) {
   const { currentUserRole = null } = useOutletContext();
   const canAccessSalaries =
     currentUserRole === "owner" ||
@@ -64,12 +64,10 @@ export default function Salaries({ token, onUnauthorized }) {
         const currentMonth = getCurrentMonthKey();
         const [salaryData, summary] = await Promise.all([
           fetchProtectedJson("/api/salaries/", {
-            token,
             onUnauthorized,
             fallbackMessage: "Failed to load salary data.",
           }),
           fetchProtectedJson("/api/summary/", {
-            token,
             onUnauthorized,
             fallbackMessage: "Failed to load salary calculation data.",
             query: { month: currentMonth },
@@ -99,7 +97,7 @@ export default function Salaries({ token, onUnauthorized }) {
     return () => {
       isActive = false;
     };
-  }, [token, onUnauthorized]);
+  }, [onUnauthorized]);
 
   const yearOptions = useMemo(() => {
     const years = [...new Set(salaries.map((item) => item.date.slice(0, 4)))].sort((left, right) =>
@@ -110,7 +108,6 @@ export default function Salaries({ token, onUnauthorized }) {
 
   const handleCreateSalary = async (values) => {
     const createdSalary = await postProtectedJson("/api/salaries/", {
-      token,
       onUnauthorized,
       fallbackMessage: "Failed to create salary record.",
       body: values,
@@ -133,7 +130,6 @@ export default function Salaries({ token, onUnauthorized }) {
     }
 
     const updatedSalary = await putProtectedJson(`/api/salaries/${editingSalary.id}/`, {
-      token,
       onUnauthorized,
       fallbackMessage: "Failed to update salary record.",
       body: values,
@@ -160,7 +156,6 @@ export default function Salaries({ token, onUnauthorized }) {
 
     try {
       const deleted = await deleteProtected(`/api/salaries/${salaryId}/`, {
-        token,
         onUnauthorized,
         fallbackMessage: "Failed to delete salary record.",
       });
