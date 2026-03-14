@@ -138,12 +138,6 @@ class SecureTokenObtainPairView(TokenObtainPairView):
             raise
 
         if response.status_code == 200:
-            _set_auth_cookies(
-                response,
-                access=response.data.get("access"),
-                refresh=response.data.get("refresh"),
-            )
-            response.data = {"detail": "Login successful."}
             log_audit_event(
                 "login_success",
                 request,
