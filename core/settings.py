@@ -253,7 +253,10 @@ X_FRAME_OPTIONS = "DENY"
 # JWT cookie security — mirrors HTTPS setting so cookies are secure in production
 # and work without TLS in development.
 JWT_COOKIE_SECURE = USE_HTTPS
-JWT_COOKIE_SAMESITE = "Strict"
+# SameSite=None is required when frontend and backend are on different origins (e.g. separate
+# Render services). SameSite=None requires Secure=True, which is enforced via JWT_COOKIE_SECURE
+# above. In local dev (HTTP), fall back to Strict so cookies still work on localhost.
+JWT_COOKIE_SAMESITE = "None" if USE_HTTPS else "Strict"
 
 if USE_HTTPS:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
