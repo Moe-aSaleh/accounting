@@ -2,8 +2,7 @@ const _apiBase = import.meta.env.VITE_API_BASE_URL;
 const API_BASE_URL = (_apiBase == null ? "http://127.0.0.1:8000" : _apiBase).replace(/\/$/, "");
 
 export function buildApiUrl(path, query) {
-  const base = API_BASE_URL || window.location.origin;
-  const url = new URL(`${base}${path}`);
+  const url = new URL(`${API_BASE_URL}${path}`, window.location.origin);
 
   if (query) {
     Object.entries(query).forEach(([key, value]) => {
