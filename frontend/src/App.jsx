@@ -60,12 +60,12 @@ function App() {
 
   if (!authReady) {
     return (
-      <div className="page-shell auth-shell">
-        <div className="panel auth-panel">
-          <h1>Loading session</h1>
-          <div className="button-with-spinner">
-            <span className="button-spinner" aria-hidden="true" />
-            <span className="status-message subtle">Checking your account...</span>
+      <div className="ws-loading-screen">
+        <div className="ws-loading-card">
+          <div className="ws-loading-mark">WS</div>
+          <div className="ws-loading-text">
+            <span className="ws-spinner" aria-hidden="true" />
+            <span>Checking your account...</span>
           </div>
         </div>
       </div>

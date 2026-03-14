@@ -60,13 +60,15 @@ export default function IncomeForm({
   const total = spareParts + labor;
 
   return (
-    <section className="sub-panel">
-      <h3 className="sub-panel-title">{title}</h3>
+    <div className="ws-card">
+      <div className="ws-card-head">
+        <h3 className="ws-card-title">{title}</h3>
+      </div>
 
-      <form className="record-form income-form" onSubmit={handleSubmit}>
-        <div className="income-row income-row-top">
-          <label className="field-group field-description">
-            <span>Description</span>
+      <form className="ws-income-form" onSubmit={handleSubmit}>
+        <div className="ws-income-row-top">
+          <label className="ws-field">
+            <span className="ws-label">Description</span>
             <input
               name="description"
               placeholder="Repair order"
@@ -76,8 +78,8 @@ export default function IncomeForm({
             />
           </label>
 
-          <label className="field-group field-amount">
-            <span>Spare Parts</span>
+          <label className="ws-field">
+            <span className="ws-label">Spare Parts</span>
             <input
               name="spare_parts_amount"
               type="number"
@@ -89,8 +91,8 @@ export default function IncomeForm({
             />
           </label>
 
-          <label className="field-group field-amount">
-            <span>Labor</span>
+          <label className="ws-field">
+            <span className="ws-label">Labor</span>
             <input
               name="labor_amount"
               type="number"
@@ -103,9 +105,9 @@ export default function IncomeForm({
           </label>
         </div>
 
-        <div className="income-row income-row-bottom">
-          <label className="field-group field-date">
-            <span>Date</span>
+        <div className="ws-income-row-bottom">
+          <label className="ws-field">
+            <span className="ws-label">Date</span>
             <input
               name="date"
               type="date"
@@ -115,16 +117,16 @@ export default function IncomeForm({
             />
           </label>
 
-          <div className="sub-total-card">
-            <span>Total Income</span>
-            <strong>{formatCurrency(total)}</strong>
+          <div className="ws-total-card">
+            <span className="ws-total-card-label">Total Income</span>
+            <strong className="ws-total-card-value">{formatCurrency(total)}</strong>
           </div>
 
-          <div className="income-actions">
+          <div className="ws-income-btns">
             <button type="submit" disabled={submitting}>
               {submitting ? (
                 <>
-                  <span className="button-spinner" aria-hidden="true" />
+                  <span className="ws-spinner" aria-hidden="true" />
                   <span>Saving...</span>
                 </>
               ) : (
@@ -132,7 +134,7 @@ export default function IncomeForm({
               )}
             </button>
             {onCancel && (
-              <button type="button" className="secondary-button" onClick={onCancel}>
+              <button type="button" className="ws-btn-ghost" onClick={onCancel}>
                 Cancel
               </button>
             )}
@@ -140,7 +142,7 @@ export default function IncomeForm({
         </div>
       </form>
 
-      {error && <p className="status-message error inline-error">{error}</p>}
-    </section>
+      {error && <p className="ws-msg error">{error}</p>}
+    </div>
   );
 }

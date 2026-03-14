@@ -93,12 +93,14 @@ export default function SalaryForm({
     (Number(laborIncome || 0) * Number(values.commission_percentage || 0)) / 100;
 
   return (
-    <section className="sub-panel">
-      <h3 className="sub-panel-title">{title}</h3>
+    <div className="ws-card">
+      <div className="ws-card-head">
+        <h3 className="ws-card-title">{title}</h3>
+      </div>
 
-      <form className="record-form salary-form" onSubmit={handleSubmit}>
-        <label className="field-group field-wide">
-          <span>Employee</span>
+      <form className="ws-salary-form" onSubmit={handleSubmit}>
+        <label className="ws-field ws-span-2">
+          <span className="ws-label">Employee</span>
           <input
             name="employee_name"
             placeholder="Employee name"
@@ -108,8 +110,8 @@ export default function SalaryForm({
           />
         </label>
 
-        <label className="field-group">
-          <span>Salary Type</span>
+        <label className="ws-field">
+          <span className="ws-label">Salary Type</span>
           <select
             name="salary_type"
             value={values.salary_type}
@@ -120,8 +122,8 @@ export default function SalaryForm({
           </select>
         </label>
 
-        <label className="field-group">
-          <span>Date</span>
+        <label className="ws-field">
+          <span className="ws-label">Date</span>
           <input
             name="date"
             type="date"
@@ -132,8 +134,8 @@ export default function SalaryForm({
         </label>
 
         {values.salary_type === "fixed" ? (
-          <label className="field-group">
-            <span>Amount</span>
+          <label className="ws-field">
+            <span className="ws-label">Amount</span>
             <input
               name="amount"
               type="number"
@@ -147,14 +149,14 @@ export default function SalaryForm({
           </label>
         ) : (
           <>
-            <div className="commission-row">
-              <label className="field-group">
-                <span>Commission On</span>
+            <div className="ws-commission-row">
+              <label className="ws-field">
+                <span className="ws-label">Commission On</span>
                 <input value="Labor Sales" readOnly />
               </label>
 
-              <label className="field-group">
-                <span>Percentage</span>
+              <label className="ws-field">
+                <span className="ws-label">Percentage (%)</span>
                 <input
                   name="commission_percentage"
                   type="number"
@@ -168,20 +170,20 @@ export default function SalaryForm({
               </label>
             </div>
 
-            <div className="commission-preview">
-              <span>Labor Income This Month</span>
-              <strong>{formatCurrency(laborIncome)}</strong>
-              <span>Commission Salary</span>
-              <strong>{formatCurrency(commissionAmount)}</strong>
+            <div className="ws-commission-preview">
+              <span className="ws-commission-preview-label">Labor Income This Month</span>
+              <strong className="ws-commission-preview-value">{formatCurrency(laborIncome)}</strong>
+              <span className="ws-commission-preview-label">Commission Salary</span>
+              <strong className="ws-commission-preview-value">{formatCurrency(commissionAmount)}</strong>
             </div>
           </>
         )}
 
-        <div className="record-form-actions">
+        <div className="ws-span-all ws-form-actions">
           <button type="submit" disabled={submitting}>
             {submitting ? (
               <>
-                <span className="button-spinner" aria-hidden="true" />
+                <span className="ws-spinner" aria-hidden="true" />
                 <span>Saving...</span>
               </>
             ) : (
@@ -189,14 +191,14 @@ export default function SalaryForm({
             )}
           </button>
           {onCancel && (
-            <button type="button" className="secondary-button" onClick={onCancel}>
+            <button type="button" className="ws-btn-ghost" onClick={onCancel}>
               Cancel
             </button>
           )}
         </div>
       </form>
 
-      {error && <p className="status-message error inline-error">{error}</p>}
-    </section>
+      {error && <p className="ws-msg error">{error}</p>}
+    </div>
   );
 }

@@ -207,24 +207,25 @@ export default function Expense({ onUnauthorized }) {
   const currentPageItems = displayedExpenses.slice(startIndex, endIndex);
 
   return (
-    <section className="panel data-panel">
-      <h2 className="section-title">Expenses</h2>
-
-      {canModifyRecords && (
-        <div className="section-actions">
-          <button
-            type="button"
-            onClick={() => {
-              setEditingExpense(null);
-              const nextOpen = !isFormOpen;
-              setIsFormOpen(nextOpen);
-              setSearchParams(nextOpen ? { create: "1" } : {});
-            }}
-          >
-            {isFormOpen && !editingExpense ? "Hide Form" : "Create Expense"}
-          </button>
-        </div>
-      )}
+    <div className="ws-page">
+      <div className="ws-page-head">
+        <h2 className="ws-page-title">Expenses</h2>
+        {canModifyRecords && (
+          <div className="ws-page-ctas">
+            <button
+              type="button"
+              onClick={() => {
+                setEditingExpense(null);
+                const nextOpen = !isFormOpen;
+                setIsFormOpen(nextOpen);
+                setSearchParams(nextOpen ? { create: "1" } : {});
+              }}
+            >
+              {isFormOpen && !editingExpense ? "Hide Form" : "Create Expense"}
+            </button>
+          </div>
+        )}
+      </div>
 
       {canModifyRecords && isFormOpen && (
         <RecordForm
@@ -244,97 +245,95 @@ export default function Expense({ onUnauthorized }) {
         />
       )}
 
-      <div className="sub-panel toolbar-panel">
-        <div className="record-filter-grid">
-          <label className="field-group">
-            <span>Month Filter</span>
-            <select
-              value={monthFilter}
-              onChange={(event) => {
-                setMonthFilter(event.target.value);
-                setCurrentPage(1);
-              }}
-            >
-              {MONTH_OPTIONS.map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
+      <div className="ws-card">
+        <div className="ws-toolbar">
+          <div className="ws-filter-row">
+            <label className="ws-field">
+              <span className="ws-label">Month Filter</span>
+              <select
+                value={monthFilter}
+                onChange={(event) => {
+                  setMonthFilter(event.target.value);
+                  setCurrentPage(1);
+                }}
+              >
+                {MONTH_OPTIONS.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-          <label className="field-group">
-            <span>Year Filter</span>
-            <select
-              value={yearFilter}
-              onChange={(event) => {
-                setYearFilter(event.target.value);
-                setCurrentPage(1);
-              }}
-            >
-              {yearOptions.map((value) => (
-                <option key={value} value={value}>
-                  {value === "all" ? "All Years" : value}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </div>
+            <label className="ws-field">
+              <span className="ws-label">Year Filter</span>
+              <select
+                value={yearFilter}
+                onChange={(event) => {
+                  setYearFilter(event.target.value);
+                  setCurrentPage(1);
+                }}
+              >
+                {yearOptions.map((value) => (
+                  <option key={value} value={value}>
+                    {value === "all" ? "All Years" : value}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
 
-      <RecordToolbar
-        searchValue={searchValue}
-        onSearchChange={(value) => {
-          setSearchValue(value);
-          setCurrentPage(1);
-        }}
-        sortValue={sortValue}
-        onSortChange={(value) => {
-          setSortValue(value);
-          setCurrentPage(1);
-        }}
-        pageSize={pageSize}
-        onPageSizeChange={(value) => {
-          setPageSize(value);
-          setCurrentPage(1);
-        }}
-        searchPlaceholder="Search expense records"
-      />
-
-      {error && <p className="status-message error">{error}</p>}
-      {loading && <p className="status-message">Loading...</p>}
-
-      {!loading && displayedExpenses.length === 0 && !error && (
-        <p className="status-message">No expense records found.</p>
-      )}
-
-      <div className="record-table">
-        <div className="record-table-header simple-table-header">
-          <span>Description</span>
-          <span>Date</span>
-          <span>Amount</span>
-          <span>Actions</span>
+          <RecordToolbar
+            searchValue={searchValue}
+            onSearchChange={(value) => {
+              setSearchValue(value);
+              setCurrentPage(1);
+            }}
+            sortValue={sortValue}
+            onSortChange={(value) => {
+              setSortValue(value);
+              setCurrentPage(1);
+            }}
+            pageSize={pageSize}
+            onPageSizeChange={(value) => {
+              setPageSize(value);
+              setCurrentPage(1);
+            }}
+            searchPlaceholder="Search expense records"
+          />
         </div>
 
-        <ul className="record-list">
-          {currentPageItems.map((item) => (
-            <li key={item.id} className="record-row simple-record-row">
-              <div className="record-cell">
-                <span className="record-primary">{item.description}</span>
-              </div>
-              <div className="record-cell">
-                <small>{item.date}</small>
-              </div>
-              <div className="record-cell record-amount-cell">
-                <strong>{formatCurrency(item.amount)}</strong>
-              </div>
-              <div className="record-cell">
-                <div className="record-actions">
+        {error && <p className="ws-msg error">{error}</p>}
+        {loading && <p className="ws-msg">Loading...</p>}
+
+        {!loading && displayedExpenses.length === 0 && !error && (
+          <p className="ws-msg subtle">No expense records found.</p>
+        )}
+
+        <div className="ws-table-scroll">
+          <div className="ws-list-header ws-simple-cols">
+            <span>Description</span>
+            <span>Date</span>
+            <span>Amount</span>
+            <span>Actions</span>
+          </div>
+
+          <ul className="ws-record-list">
+            {currentPageItems.map((item) => (
+              <li key={item.id} className="ws-simple-cols">
+                <div className="ws-record-primary">{item.description}</div>
+                <div className="ws-record-secondary">
+                  <small>{item.date}</small>
+                </div>
+                <div className="ws-record-amount">
+                  <strong className="ws-amount">{formatCurrency(item.amount)}</strong>
+                </div>
+                <div className="ws-record-actions">
                   {canModifyRecords && (
                     <>
                       <button
                         type="button"
-                        className="secondary-button record-action-button"
+                        className="ws-btn-ghost ws-btn-sm"
                         onClick={() => {
                           setEditingExpense(item);
                           setIsFormOpen(true);
@@ -345,7 +344,7 @@ export default function Expense({ onUnauthorized }) {
                       </button>
                       <button
                         type="button"
-                        className="danger-button record-action-button"
+                        className="ws-btn-danger ws-btn-sm"
                         onClick={() => handleDeleteExpense(item.id)}
                       >
                         Delete
@@ -353,41 +352,41 @@ export default function Expense({ onUnauthorized }) {
                     </>
                   )}
                 </div>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {displayedExpenses.length > 0 && (
-        <div className="pagination-bar">
-          <span className="pagination-summary">
-            Showing {startIndex + 1}-{Math.min(endIndex, displayedExpenses.length)} of{" "}
-            {displayedExpenses.length}
-          </span>
-          <div className="pagination-actions">
-            <button
-              type="button"
-              className="secondary-button"
-              disabled={activePage <= 1}
-              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-            >
-              Previous
-            </button>
-            <span className="pagination-page">
-              Page {activePage} of {totalPages}
-            </span>
-            <button
-              type="button"
-              className="secondary-button"
-              disabled={activePage >= totalPages}
-              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-            >
-              Next
-            </button>
-          </div>
+              </li>
+            ))}
+          </ul>
         </div>
-      )}
-    </section>
+
+        {displayedExpenses.length > 0 && (
+          <div className="ws-pager">
+            <span className="ws-pager-info">
+              Showing {startIndex + 1}–{Math.min(endIndex, displayedExpenses.length)} of{" "}
+              {displayedExpenses.length}
+            </span>
+            <div className="ws-pager-controls">
+              <button
+                type="button"
+                className="ws-btn-ghost ws-btn-sm"
+                disabled={activePage <= 1}
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              >
+                Previous
+              </button>
+              <span className="ws-pager-label">
+                Page {activePage} of {totalPages}
+              </span>
+              <button
+                type="button"
+                className="ws-btn-ghost ws-btn-sm"
+                disabled={activePage >= totalPages}
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

@@ -219,24 +219,25 @@ export default function Income({ onUnauthorized, onIncomeChanged }) {
   const currentPageItems = displayedIncomes.slice(startIndex, endIndex);
 
   return (
-    <section className="panel data-panel">
-      <h2 className="section-title">Income</h2>
-
-      {canModifyRecords && (
-        <div className="section-actions">
-          <button
-            type="button"
-            onClick={() => {
-              setEditingIncome(null);
-              const nextOpen = !isFormOpen;
-              setIsFormOpen(nextOpen);
-              setSearchParams(nextOpen ? { create: "1" } : {});
-            }}
-          >
-            {isFormOpen && !editingIncome ? "Hide Form" : "Create Income"}
-          </button>
-        </div>
-      )}
+    <div className="ws-page">
+      <div className="ws-page-head">
+        <h2 className="ws-page-title">Income</h2>
+        {canModifyRecords && (
+          <div className="ws-page-ctas">
+            <button
+              type="button"
+              onClick={() => {
+                setEditingIncome(null);
+                const nextOpen = !isFormOpen;
+                setIsFormOpen(nextOpen);
+                setSearchParams(nextOpen ? { create: "1" } : {});
+              }}
+            >
+              {isFormOpen && !editingIncome ? "Hide Form" : "Create Income"}
+            </button>
+          </div>
+        )}
+      </div>
 
       {canModifyRecords && isFormOpen && (
         <IncomeForm
@@ -253,103 +254,99 @@ export default function Income({ onUnauthorized, onIncomeChanged }) {
         />
       )}
 
-      <div className="sub-panel toolbar-panel">
-        <div className="record-filter-grid">
-          <label className="field-group">
-            <span>Month Filter</span>
-            <select
-              value={monthFilter}
-              onChange={(event) => {
-                setMonthFilter(event.target.value);
-                setCurrentPage(1);
-              }}
-            >
-              {MONTH_OPTIONS.map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
+      <div className="ws-card">
+        <div className="ws-toolbar">
+          <div className="ws-filter-row">
+            <label className="ws-field">
+              <span className="ws-label">Month Filter</span>
+              <select
+                value={monthFilter}
+                onChange={(event) => {
+                  setMonthFilter(event.target.value);
+                  setCurrentPage(1);
+                }}
+              >
+                {MONTH_OPTIONS.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-          <label className="field-group">
-            <span>Year Filter</span>
-            <select
-              value={yearFilter}
-              onChange={(event) => {
-                setYearFilter(event.target.value);
-                setCurrentPage(1);
-              }}
-            >
-              {yearOptions.map((value) => (
-                <option key={value} value={value}>
-                  {value === "all" ? "All Years" : value}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </div>
+            <label className="ws-field">
+              <span className="ws-label">Year Filter</span>
+              <select
+                value={yearFilter}
+                onChange={(event) => {
+                  setYearFilter(event.target.value);
+                  setCurrentPage(1);
+                }}
+              >
+                {yearOptions.map((value) => (
+                  <option key={value} value={value}>
+                    {value === "all" ? "All Years" : value}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
 
-      <RecordToolbar
-        searchValue={searchValue}
-        onSearchChange={(value) => {
-          setSearchValue(value);
-          setCurrentPage(1);
-        }}
-        sortValue={sortValue}
-        onSortChange={(value) => {
-          setSortValue(value);
-          setCurrentPage(1);
-        }}
-        pageSize={pageSize}
-        onPageSizeChange={(value) => {
-          setPageSize(value);
-          setCurrentPage(1);
-        }}
-        searchPlaceholder="Search income records"
-      />
-
-      {error && <p className="status-message error">{error}</p>}
-      {loading && <p className="status-message">Loading...</p>}
-
-      {!loading && displayedIncomes.length === 0 && !error && (
-        <p className="status-message">No income records found.</p>
-      )}
-
-      <div className="record-table">
-        <div className="record-table-header income-table-header">
-          <span>Description</span>
-          <span>Breakdown</span>
-          <span>Total</span>
-          <span>Actions</span>
+          <RecordToolbar
+            searchValue={searchValue}
+            onSearchChange={(value) => {
+              setSearchValue(value);
+              setCurrentPage(1);
+            }}
+            sortValue={sortValue}
+            onSortChange={(value) => {
+              setSortValue(value);
+              setCurrentPage(1);
+            }}
+            pageSize={pageSize}
+            onPageSizeChange={(value) => {
+              setPageSize(value);
+              setCurrentPage(1);
+            }}
+            searchPlaceholder="Search income records"
+          />
         </div>
 
-        <ul className="record-list">
-          {currentPageItems.map((item) => (
-            <li key={item.id} className="record-row income-record-row">
-              <div className="record-cell">
-                <span className="record-primary">{item.description}</span>
-              </div>
-              <div className="record-cell">
-                <div className="record-main">
+        {error && <p className="ws-msg error">{error}</p>}
+        {loading && <p className="ws-msg">Loading...</p>}
+
+        {!loading && displayedIncomes.length === 0 && !error && (
+          <p className="ws-msg subtle">No income records found.</p>
+        )}
+
+        <div className="ws-table-scroll">
+          <div className="ws-list-header ws-income-cols">
+            <span>Description</span>
+            <span>Breakdown</span>
+            <span>Total</span>
+            <span>Actions</span>
+          </div>
+
+          <ul className="ws-record-list">
+            {currentPageItems.map((item) => (
+              <li key={item.id} className="ws-income-cols">
+                <div className="ws-record-primary">{item.description}</div>
+                <div className="ws-record-secondary">
                   <small>{item.date}</small>
                   <small>
-                    Parts: {formatCurrency(item.spare_parts_amount)} | Labor:{" "}
+                    Parts: {formatCurrency(item.spare_parts_amount)} &nbsp;|&nbsp; Labor:{" "}
                     {formatCurrency(item.labor_amount)}
                   </small>
                 </div>
-              </div>
-              <div className="record-cell record-amount-cell">
-                <strong>{formatCurrency(item.amount)}</strong>
-              </div>
-              <div className="record-cell">
-                <div className="record-actions">
+                <div className="ws-record-amount">
+                  <strong className="ws-amount">{formatCurrency(item.amount)}</strong>
+                </div>
+                <div className="ws-record-actions">
                   {canModifyRecords && (
                     <>
                       <button
                         type="button"
-                        className="secondary-button record-action-button"
+                        className="ws-btn-ghost ws-btn-sm"
                         onClick={() => {
                           setEditingIncome(item);
                           setIsFormOpen(true);
@@ -360,7 +357,7 @@ export default function Income({ onUnauthorized, onIncomeChanged }) {
                       </button>
                       <button
                         type="button"
-                        className="danger-button record-action-button"
+                        className="ws-btn-danger ws-btn-sm"
                         onClick={() => handleDeleteIncome(item.id)}
                       >
                         Delete
@@ -368,41 +365,41 @@ export default function Income({ onUnauthorized, onIncomeChanged }) {
                     </>
                   )}
                 </div>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {displayedIncomes.length > 0 && (
-        <div className="pagination-bar">
-          <span className="pagination-summary">
-            Showing {startIndex + 1}-{Math.min(endIndex, displayedIncomes.length)} of{" "}
-            {displayedIncomes.length}
-          </span>
-          <div className="pagination-actions">
-            <button
-              type="button"
-              className="secondary-button"
-              disabled={activePage <= 1}
-              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-            >
-              Previous
-            </button>
-            <span className="pagination-page">
-              Page {activePage} of {totalPages}
-            </span>
-            <button
-              type="button"
-              className="secondary-button"
-              disabled={activePage >= totalPages}
-              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-            >
-              Next
-            </button>
-          </div>
+              </li>
+            ))}
+          </ul>
         </div>
-      )}
-    </section>
+
+        {displayedIncomes.length > 0 && (
+          <div className="ws-pager">
+            <span className="ws-pager-info">
+              Showing {startIndex + 1}–{Math.min(endIndex, displayedIncomes.length)} of{" "}
+              {displayedIncomes.length}
+            </span>
+            <div className="ws-pager-controls">
+              <button
+                type="button"
+                className="ws-btn-ghost ws-btn-sm"
+                disabled={activePage <= 1}
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              >
+                Previous
+              </button>
+              <span className="ws-pager-label">
+                Page {activePage} of {totalPages}
+              </span>
+              <button
+                type="button"
+                className="ws-btn-ghost ws-btn-sm"
+                disabled={activePage >= totalPages}
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
