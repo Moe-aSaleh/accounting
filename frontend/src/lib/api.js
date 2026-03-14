@@ -2,11 +2,6 @@ const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000"
 ).replace(/\/$/, "");
 
-export function clearStoredTokens() {
-  localStorage.removeItem("access");
-  localStorage.removeItem("refresh");
-}
-
 export function buildApiUrl(path, query) {
   const url = new URL(`${API_BASE_URL}${path}`);
 
@@ -21,55 +16,43 @@ export function buildApiUrl(path, query) {
   return url.toString();
 }
 
-function getAccessToken(token) {
-  return localStorage.getItem("access") || token;
+export async function refreshAccessToken({ onUnauthorized, failSilently = false } = {}) {
+  try {
+    const response = await fetch(buildApiUrl("/api/token/refresh/"), {
+      method: "POST",
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      if (!failSilently) {
+        onUnauthorized?.();
+      }
+      return false;
+    }
+
+    return true;
+  } catch {
+    if (!failSilently) {
+      onUnauthorized?.();
+    }
+    return false;
+  }
 }
 
-export async function refreshAccessToken({ onUnauthorized, failSilently = false } = {}) {
-  const refreshToken = localStorage.getItem("refresh");
-
-  if (!refreshToken) {
-    if (!failSilently) {
-      onUnauthorized?.();
-    }
-    return null;
-  }
-
-  const response = await fetch(buildApiUrl("/api/token/refresh/"), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ refresh: refreshToken }),
-  });
-
-  let payload = null;
-
+export async function logoutUser() {
   try {
-    payload = await response.json();
+    await fetch(buildApiUrl("/api/logout/"), {
+      method: "POST",
+      credentials: "include",
+    });
   } catch {
-    payload = null;
+    // Ignore network errors during logout — cookies will expire naturally.
   }
-
-  if (!response.ok || !payload?.access) {
-    clearStoredTokens();
-    if (!failSilently) {
-      onUnauthorized?.();
-    }
-    return null;
-  }
-
-  localStorage.setItem("access", payload.access);
-  if (payload.refresh) {
-    localStorage.setItem("refresh", payload.refresh);
-  }
-  return payload.access;
 }
 
 async function requestProtected(
   path,
   {
-    token,
     onUnauthorized,
     fallbackMessage,
     method = "GET",
@@ -78,18 +61,18 @@ async function requestProtected(
     query,
   },
 ) {
-  const sendRequest = async (accessToken) =>
+  const sendRequest = async () =>
     fetch(buildApiUrl(path, query), {
       method,
+      credentials: "include",
       headers: {
-        Authorization: `Bearer ${accessToken}`,
         ...(body ? { "Content-Type": "application/json" } : {}),
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
       ...(rawBody ? { body: rawBody } : {}),
     });
 
-  let response = await sendRequest(getAccessToken(token));
+  let response = await sendRequest();
   let payload = null;
 
   try {
@@ -99,13 +82,13 @@ async function requestProtected(
   }
 
   if (response.status === 401) {
-    const nextAccessToken = await refreshAccessToken({ onUnauthorized });
+    const refreshed = await refreshAccessToken({ onUnauthorized });
 
-    if (!nextAccessToken) {
+    if (!refreshed) {
       return null;
     }
 
-    response = await sendRequest(nextAccessToken);
+    response = await sendRequest();
 
     try {
       payload = await response.json();
@@ -115,7 +98,7 @@ async function requestProtected(
   }
 
   if (response.status === 401) {
-    onUnauthorized();
+    onUnauthorized?.();
     return null;
   }
 
@@ -157,10 +140,9 @@ export function getApiErrorMessage(payload, fallbackMessage) {
 
 export async function fetchProtectedJson(
   path,
-  { token, onUnauthorized, fallbackMessage, query },
+  { onUnauthorized, fallbackMessage, query },
 ) {
   return requestProtected(path, {
-    token,
     onUnauthorized,
     fallbackMessage,
     query,
@@ -169,10 +151,9 @@ export async function fetchProtectedJson(
 
 export async function postProtectedJson(
   path,
-  { token, onUnauthorized, fallbackMessage, body, query },
+  { onUnauthorized, fallbackMessage, body, query },
 ) {
   return requestProtected(path, {
-    token,
     onUnauthorized,
     fallbackMessage,
     method: "POST",
@@ -183,10 +164,9 @@ export async function postProtectedJson(
 
 export async function putProtectedJson(
   path,
-  { token, onUnauthorized, fallbackMessage, body, query },
+  { onUnauthorized, fallbackMessage, body, query },
 ) {
   return requestProtected(path, {
-    token,
     onUnauthorized,
     fallbackMessage,
     method: "PUT",
@@ -197,10 +177,9 @@ export async function putProtectedJson(
 
 export async function deleteProtected(
   path,
-  { token, onUnauthorized, fallbackMessage, query },
+  { onUnauthorized, fallbackMessage, query },
 ) {
   return requestProtected(path, {
-    token,
     onUnauthorized,
     fallbackMessage,
     method: "DELETE",
@@ -210,13 +189,12 @@ export async function deleteProtected(
 
 export async function uploadProtectedFile(
   path,
-  { token, onUnauthorized, fallbackMessage, file, query },
+  { onUnauthorized, fallbackMessage, file, query },
 ) {
   const formData = new FormData();
   formData.append("file", file);
 
   return requestProtected(path, {
-    token,
     onUnauthorized,
     fallbackMessage,
     method: "POST",
@@ -227,10 +205,9 @@ export async function uploadProtectedFile(
 
 export async function postProtectedAction(
   path,
-  { token, onUnauthorized, fallbackMessage, query },
+  { onUnauthorized, fallbackMessage, query },
 ) {
   return requestProtected(path, {
-    token,
     onUnauthorized,
     fallbackMessage,
     method: "POST",

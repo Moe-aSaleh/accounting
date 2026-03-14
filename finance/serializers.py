@@ -34,21 +34,29 @@ class CompanyUserCreateSerializer(serializers.Serializer):
 class IncomeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Income
-        fields = '__all__'
-        read_only_fields = ('id', 'user', 'company', 'amount')
+        fields = (
+            "id", "user", "company", "amount",
+            "spare_parts_amount", "labor_amount", "description", "date",
+        )
+        read_only_fields = ("id", "user", "company", "amount")
+
 
 class ExpenseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Expense
-        fields = '__all__'
-        read_only_fields = ('id', 'user', 'company')
+        fields = ("id", "user", "company", "amount", "description", "date")
+        read_only_fields = ("id", "user", "company")
 
 
 class SalarySerializer(serializers.ModelSerializer):
     class Meta:
         model = Salary
-        fields = '__all__'
-        read_only_fields = ('id', 'user', 'company')
+        fields = (
+            "id", "user", "company", "employee_name",
+            "salary_type", "commission_base", "commission_percentage",
+            "amount", "date",
+        )
+        read_only_fields = ("id", "user", "company")
 
 
 class MonthlyOpeningBalanceSerializer(serializers.ModelSerializer):

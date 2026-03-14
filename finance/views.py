@@ -1,21 +1,29 @@
 import csv
+import logging
+import os
 
 from datetime import date, datetime
 from decimal import Decimal
 from calendar import month_name
+from django.conf import settings
 from django.contrib.auth.models import User
+from rest_framework import status
 from rest_framework.viewsets import ModelViewSet
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.decorators import parser_classes
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.exceptions import APIException, PermissionDenied, ValidationError
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from .authentication import JWTCookieAuthentication
 from django.db.models import Sum
 from django.db.models.functions import ExtractMonth, ExtractYear
 from django.db import transaction
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 
 from .models import Income, Expense, Salary, MonthlyOpeningBalance, UserProfile, AuditLog
 from .serializers import (
@@ -79,6 +87,31 @@ IMPORT_HEADER_ALIASES = {
 }
 
 
+def _get_cookie_kwargs():
+    return {
+        "httponly": True,
+        "secure": getattr(settings, "JWT_COOKIE_SECURE", False),
+        "samesite": getattr(settings, "JWT_COOKIE_SAMESITE", "Strict"),
+        "path": "/",
+    }
+
+
+def _set_auth_cookies(response, *, access=None, refresh=None):
+    cookie_kwargs = _get_cookie_kwargs()
+    if access:
+        access_max_age = int(os.getenv("JWT_ACCESS_MINUTES", "30")) * 60
+        response.set_cookie("access_token", access, max_age=access_max_age, **cookie_kwargs)
+    if refresh:
+        refresh_max_age = int(os.getenv("JWT_REFRESH_DAYS", "1")) * 86400
+        response.set_cookie("refresh_token", refresh, max_age=refresh_max_age, **cookie_kwargs)
+
+
+def _clear_auth_cookies(response):
+    cookie_kwargs = _get_cookie_kwargs()
+    response.delete_cookie("access_token", path=cookie_kwargs["path"], samesite=cookie_kwargs["samesite"])
+    response.delete_cookie("refresh_token", path=cookie_kwargs["path"], samesite=cookie_kwargs["samesite"])
+
+
 class AuthRateThrottle(AnonRateThrottle):
     scope = "auth"
 
@@ -105,6 +138,12 @@ class SecureTokenObtainPairView(TokenObtainPairView):
             raise
 
         if response.status_code == 200:
+            _set_auth_cookies(
+                response,
+                access=response.data.get("access"),
+                refresh=response.data.get("refresh"),
+            )
+            response.data = {"detail": "Login successful."}
             log_audit_event(
                 "login_success",
                 request,
@@ -127,6 +166,42 @@ class SecureTokenObtainPairView(TokenObtainPairView):
 
 class SecureTokenRefreshView(TokenRefreshView):
     throttle_classes = (AuthRateThrottle,)
+
+    def post(self, request, *args, **kwargs):
+        refresh_token = request.COOKIES.get("refresh_token")
+
+        if not refresh_token:
+            return Response(
+                {"detail": "Authentication credentials were not provided."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        serializer = self.get_serializer(data={"refresh": refresh_token})
+
+        try:
+            serializer.is_valid(raise_exception=True)
+        except Exception:
+            response = Response(
+                {"detail": "Token is invalid or expired."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+            _clear_auth_cookies(response)
+            return response
+
+        access = serializer.validated_data.get("access")
+        new_refresh = serializer.validated_data.get("refresh")
+
+        response = Response({"detail": "Token refreshed."})
+        _set_auth_cookies(response, access=access, refresh=new_refresh)
+        return response
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def logout_view(request):
+    response = Response({"detail": "Logged out."})
+    _clear_auth_cookies(response)
+    return response
 
 
 def get_user_profile(user):
@@ -161,7 +236,8 @@ def get_client_ip(request):
     forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
 
     if forwarded_for:
-        return forwarded_for.split(",")[0].strip()
+        # Use the rightmost IP — set by the trusted proxy, cannot be spoofed by clients.
+        return forwarded_for.split(",")[-1].strip()
 
     return request.META.get("REMOTE_ADDR", "")
 
@@ -455,6 +531,7 @@ def get_years_with_data(company):
 
 class IncomeViewSet(ModelViewSet):
     serializer_class = IncomeSerializer
+    pagination_class = None
 
     def get_queryset(self):
         company = get_user_company(self.request.user)
@@ -531,6 +608,7 @@ class IncomeViewSet(ModelViewSet):
 
 class ExpenseViewSet(ModelViewSet):
     serializer_class = ExpenseSerializer
+    pagination_class = None
 
     def get_queryset(self):
         company = get_user_company(self.request.user)
@@ -603,6 +681,7 @@ class ExpenseViewSet(ModelViewSet):
 
 class SalaryViewSet(ModelViewSet):
     serializer_class = SalarySerializer
+    pagination_class = None
 
     def get_queryset(self):
         require_user_role(
@@ -686,13 +765,14 @@ def summary_view(request):
     company = get_user_company(request.user)
     selected_month, monthly_filters = get_monthly_filters(request, company)
 
-    total_income = Income.objects.filter(**monthly_filters).aggregate(total=Sum('amount'))['total'] or 0
-    spare_parts_income = Income.objects.filter(**monthly_filters).aggregate(
-        total=Sum('spare_parts_amount')
-    )['total'] or 0
-    labor_income = Income.objects.filter(**monthly_filters).aggregate(
-        total=Sum('labor_amount')
-    )['total'] or 0
+    income_agg = Income.objects.filter(**monthly_filters).aggregate(
+        total=Sum("amount"),
+        spare_parts=Sum("spare_parts_amount"),
+        labor=Sum("labor_amount"),
+    )
+    total_income = income_agg["total"] or 0
+    spare_parts_income = income_agg["spare_parts"] or 0
+    labor_income = income_agg["labor"] or 0
     total_expense = Expense.objects.filter(**monthly_filters).aggregate(total=Sum('amount'))['total'] or 0
     total_salaries = Salary.objects.filter(**monthly_filters).aggregate(total=Sum('amount'))['total'] or 0
     manual_opening_balance = MonthlyOpeningBalance.objects.filter(

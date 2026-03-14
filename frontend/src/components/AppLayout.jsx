@@ -6,7 +6,6 @@ import {
 } from "../lib/api";
 
 export default function AppLayout({
-  token,
   onLogout,
   onUnauthorized,
   settingsVersion,
@@ -84,7 +83,6 @@ export default function AppLayout({
     const loadCompanySettings = async () => {
       try {
         const data = await fetchProtectedJson("/api/company-settings/", {
-          token,
           onUnauthorized,
           fallbackMessage: "Failed to load company settings.",
         });
@@ -106,7 +104,7 @@ export default function AppLayout({
     return () => {
       isActive = false;
     };
-  }, [token, onUnauthorized, settingsVersion]);
+  }, [onUnauthorized, settingsVersion]);
 
   const handleImportClick = () => {
     setImportMessage("");
@@ -165,7 +163,6 @@ export default function AppLayout({
 
     try {
       const result = await uploadProtectedFile("/api/import-monthly-csv/", {
-        token,
         onUnauthorized,
         fallbackMessage: "Failed to import the CSV file.",
         file,

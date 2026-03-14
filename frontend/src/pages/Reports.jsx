@@ -7,7 +7,7 @@ function getCurrentYear() {
   return String(new Date().getFullYear());
 }
 
-export default function Reports({ token, onUnauthorized }) {
+export default function Reports({ onUnauthorized }) {
   const { currentUserRole = null } = useOutletContext();
   const yearCacheRef = useRef(new Map());
   const [selectedYear, setSelectedYear] = useState(getCurrentYear);
@@ -23,7 +23,7 @@ export default function Reports({ token, onUnauthorized }) {
   const latestYear = yearOptions[0];
 
   useEffect(() => {
-    if (!token || currentUserRole === "staff" || currentUserRole === null) {
+    if (currentUserRole === "staff" || currentUserRole === null) {
       return;
     }
 
@@ -32,7 +32,6 @@ export default function Reports({ token, onUnauthorized }) {
     const loadAvailableYears = async () => {
       try {
         const payload = await fetchProtectedJson("/api/available-years/", {
-          token,
           onUnauthorized,
           fallbackMessage: "Failed to load available report years.",
         });
@@ -67,10 +66,10 @@ export default function Reports({ token, onUnauthorized }) {
     return () => {
       isActive = false;
     };
-  }, [token, onUnauthorized, currentUserRole]);
+  }, [onUnauthorized, currentUserRole]);
 
   useEffect(() => {
-    if (!token || currentUserRole === "staff" || currentUserRole === null) {
+    if (currentUserRole === "staff" || currentUserRole === null) {
       return;
     }
 
@@ -93,7 +92,6 @@ export default function Reports({ token, onUnauthorized }) {
         const nextYearOverview = await fetchProtectedJson(
           "/api/year-overview/",
           {
-            token,
             onUnauthorized,
             fallbackMessage: "Failed to load yearly report data.",
             query: { year: normalizedYear },
@@ -124,7 +122,7 @@ export default function Reports({ token, onUnauthorized }) {
     return () => {
       isActive = false;
     };
-  }, [token, onUnauthorized, normalizedYear, currentUserRole]);
+  }, [onUnauthorized, normalizedYear, currentUserRole]);
 
   return (
     <section className="panel data-panel">
