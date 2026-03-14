@@ -46,35 +46,52 @@ export default function Login({ onLogin }) {
   };
 
   return (
-    <div className="page-shell auth-shell">
-      <div className="panel auth-panel">
-        <h1>Login</h1>
-        <form className="stack-form" onSubmit={handleLogin}>
-          <input
-            placeholder="Username"
-            value={username}
-            autoComplete="username"
-            onChange={(e) => setUsername(e.target.value)}
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          <button type="submit" disabled={submitting}>
+    <div className="ws-auth">
+      <div className="ws-auth-card">
+        <div className="ws-auth-mark">WS</div>
+        <h1>Sign in</h1>
+        <p>Enter your credentials to access the workspace.</p>
+
+        <form className="ws-form-stack" onSubmit={handleLogin}>
+          <label className="ws-field">
+            <span className="ws-label">Username</span>
+            <input
+              placeholder="username"
+              value={username}
+              autoComplete="username"
+              onChange={(e) => setUsername(e.target.value)}
+            />
+          </label>
+
+          <label className="ws-field">
+            <span className="ws-label">Password</span>
+            <input
+              type="password"
+              placeholder="••••••••"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </label>
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="ws-btn-wide"
+            style={{ marginTop: "6px" }}
+          >
             {submitting ? (
               <>
-                <span className="button-spinner" aria-hidden="true" />
+                <span className="ws-spinner" aria-hidden="true" />
                 <span>Signing in...</span>
               </>
             ) : (
-              "Login"
+              "Sign in"
             )}
           </button>
         </form>
-        {error && <p className="status-message error">{error}</p>}
+
+        {error && <p className="ws-msg error">{error}</p>}
       </div>
     </div>
   );

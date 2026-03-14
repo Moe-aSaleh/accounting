@@ -125,63 +125,57 @@ export default function Reports({ onUnauthorized }) {
   }, [onUnauthorized, normalizedYear, currentUserRole]);
 
   return (
-    <section className="panel data-panel">
-      <h2 className="section-title">Reports</h2>
+    <div className="ws-page">
       {currentUserRole === null ? (
-        <p className="status-message">Loading...</p>
+        <p className="ws-msg">Loading...</p>
       ) : currentUserRole === "staff" ? (
-        <p className="status-message error">
-          Staff users cannot access reports.
-        </p>
+        <p className="ws-msg error">Staff users cannot access reports.</p>
       ) : (
         <>
-          <div className="dashboard-topbar">
+          <div className="ws-page-head">
             <div>
-              <p className="status-message subtle report-intro">
-                Click any month row to expand details for that month.
-              </p>
+              <h2 className="ws-page-title">Reports</h2>
+              <p className="ws-page-desc">Click any month row to expand details for that month.</p>
             </div>
-            <div className="dashboard-actions">
-              <div className="report-year-control">
-                <label className="field-group report-year-select">
-                  <span>Year</span>
-                  <select
-                    value={normalizedYear}
-                    onChange={(event) => setSelectedYear(event.target.value)}
-                  >
-                    {yearOptions.map((year) => (
-                      <option key={year} value={year}>
-                        {year}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {normalizedYear !== latestYear && (
-                  <button
-                    type="button"
-                    className="secondary-button report-year-button"
-                    onClick={() => setSelectedYear(latestYear)}
-                  >
-                    Latest Year
-                  </button>
-                )}
-              </div>
+            <div className="ws-report-controls">
+              <label className="ws-field ws-report-year-select">
+                <span className="ws-label">Year</span>
+                <select
+                  value={normalizedYear}
+                  onChange={(event) => setSelectedYear(event.target.value)}
+                >
+                  {yearOptions.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {normalizedYear !== latestYear && (
+                <button
+                  type="button"
+                  className="ws-btn-ghost ws-btn-sm"
+                  onClick={() => setSelectedYear(latestYear)}
+                  style={{ alignSelf: "flex-end" }}
+                >
+                  Latest Year
+                </button>
+              )}
             </div>
           </div>
 
-          {yearError && <p className="status-message error">{yearError}</p>}
-          {loadingYear && <p className="status-message">Loading...</p>}
+          {yearError && <p className="ws-msg error">{yearError}</p>}
+          {loadingYear && <p className="ws-msg">Loading...</p>}
 
           {!loadingYear && yearOverview && (
-            <section className="sub-panel">
-              <div className="chart-panel-header">
-                <h3 className="sub-panel-title">
-                  Year Overview - {yearOverview.year}
-                </h3>
+            <div className="ws-card">
+              <div className="ws-card-head">
+                <h3 className="ws-card-title">Year Overview</h3>
+                <span className="ws-card-meta">{yearOverview.year}</span>
               </div>
 
-              <div className="report-table-wrap">
-                <table className="report-table">
+              <div className="ws-report-wrap">
+                <table className="ws-report-table">
                   <thead>
                     <tr>
                       <th>Month</th>
@@ -201,8 +195,8 @@ export default function Reports({ onUnauthorized }) {
                           <tr
                             className={
                               isExpanded
-                                ? "report-row-expanded"
-                                : "report-row-clickable"
+                                ? "ws-report-row-expanded"
+                                : "ws-report-row-clickable"
                             }
                             role="button"
                             tabIndex={0}
@@ -229,62 +223,52 @@ export default function Reports({ onUnauthorized }) {
                             <td>{formatCurrency(month.total_income)}</td>
                             <td>{formatCurrency(month.total_expense)}</td>
                             <td>{formatCurrency(month.total_salaries)}</td>
-                            <td>{formatCurrency(month.net_profit)}</td>
-                            <td>{formatCurrency(month.closing_balance)}</td>
+                            <td className={Number(month.net_profit) < 0 ? "ws-td-neg" : ""}>{formatCurrency(month.net_profit)}</td>
+                            <td className={Number(month.closing_balance) < 0 ? "ws-td-neg" : ""}>{formatCurrency(month.closing_balance)}</td>
                           </tr>
                           {isExpanded && (
-                            <tr className="report-row-details">
+                            <tr className="ws-report-row-details">
                               <td colSpan={6}>
-                                <div className="summary-grid">
-                                  <article className="stat-card">
-                                    <span className="stat-label">
-                                      Opening Balance
-                                    </span>
-                                    <strong>
+                                <div className="ws-stats">
+                                  <article className={`ws-stat${Number(month.opening_balance) < 0 ? " neg" : ""}`}>
+                                    <span className="ws-stat-label">Opening Balance</span>
+                                    <strong className="ws-stat-value">
                                       {formatCurrency(month.opening_balance)}
                                     </strong>
                                   </article>
-                                  <article className="stat-card">
-                                    <span className="stat-label">
-                                      Spare Parts Income
-                                    </span>
-                                    <strong>
+                                  <article className="ws-stat">
+                                    <span className="ws-stat-label">Spare Parts Income</span>
+                                    <strong className="ws-stat-value">
                                       {formatCurrency(month.spare_parts_income)}
                                     </strong>
                                   </article>
-                                  <article className="stat-card">
-                                    <span className="stat-label">
-                                      Labor Income
-                                    </span>
-                                    <strong>
+                                  <article className="ws-stat">
+                                    <span className="ws-stat-label">Labor Income</span>
+                                    <strong className="ws-stat-value">
                                       {formatCurrency(month.labor_income)}
                                     </strong>
                                   </article>
-                                  <article className="stat-card">
-                                    <span className="stat-label">Expenses</span>
-                                    <strong>
+                                  <article className="ws-stat">
+                                    <span className="ws-stat-label">Expenses</span>
+                                    <strong className="ws-stat-value">
                                       {formatCurrency(month.total_expense)}
                                     </strong>
                                   </article>
-                                  <article className="stat-card">
-                                    <span className="stat-label">Salaries</span>
-                                    <strong>
+                                  <article className="ws-stat">
+                                    <span className="ws-stat-label">Salaries</span>
+                                    <strong className="ws-stat-value">
                                       {formatCurrency(month.total_salaries)}
                                     </strong>
                                   </article>
-                                  <article className="stat-card highlight">
-                                    <span className="stat-label">
-                                      Net Profit
-                                    </span>
-                                    <strong>
+                                  <article className={`ws-stat hl${Number(month.net_profit) < 0 ? " neg" : ""}`}>
+                                    <span className="ws-stat-label">Net Profit</span>
+                                    <strong className="ws-stat-value">
                                       {formatCurrency(month.net_profit)}
                                     </strong>
                                   </article>
-                                  <article className="stat-card highlight">
-                                    <span className="stat-label">
-                                      Closing Balance
-                                    </span>
-                                    <strong>
+                                  <article className={`ws-stat hl${Number(month.closing_balance) < 0 ? " neg" : ""}`}>
+                                    <span className="ws-stat-label">Closing Balance</span>
+                                    <strong className="ws-stat-value">
                                       {formatCurrency(month.closing_balance)}
                                     </strong>
                                   </article>
@@ -298,10 +282,10 @@ export default function Reports({ onUnauthorized }) {
                   </tbody>
                 </table>
               </div>
-            </section>
+            </div>
           )}
         </>
       )}
-    </section>
+    </div>
   );
 }

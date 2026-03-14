@@ -226,202 +226,203 @@ export default function Salaries({ onUnauthorized }) {
   const currentPageItems = displayedSalaries.slice(startIndex, endIndex);
 
   return (
-    <section className="panel data-panel">
-      <h2 className="section-title">Salaries</h2>
+    <div className="ws-page">
       {currentUserRole === null ? (
-        <p className="status-message">Loading...</p>
+        <p className="ws-msg">Loading...</p>
       ) : !canAccessSalaries ? (
-        <p className="status-message error">You do not have permission to access salaries.</p>
+        <p className="ws-msg error">You do not have permission to access salaries.</p>
       ) : (
         <>
-      <p className="status-message subtle report-intro">
-        Keep salaries as the actual amount paid each month. If a salary changes, save the new amount
-        in the month it changes so older months stay correct.
-      </p>
+          <div className="ws-page-head">
+            <div>
+              <h2 className="ws-page-title">Salaries</h2>
+              <p className="ws-page-desc">
+                Keep salaries as the actual amount paid each month. If a salary changes, save the
+                new amount in the month it changes so older months stay correct.
+              </p>
+            </div>
+            {canModifySalaries && (
+              <div className="ws-page-ctas">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingSalary(null);
+                    const nextOpen = !isFormOpen;
+                    setIsFormOpen(nextOpen);
+                    setSearchParams(nextOpen ? { create: "1" } : {});
+                  }}
+                >
+                  {isFormOpen && !editingSalary ? "Hide Form" : "Create Salary"}
+                </button>
+              </div>
+            )}
+          </div>
 
-      {canModifySalaries && (
-        <div className="section-actions">
-          <button
-            type="button"
-            onClick={() => {
-              setEditingSalary(null);
-              const nextOpen = !isFormOpen;
-              setIsFormOpen(nextOpen);
-              setSearchParams(nextOpen ? { create: "1" } : {});
-            }}
-          >
-            {isFormOpen && !editingSalary ? "Hide Form" : "Create Salary"}
-          </button>
-        </div>
-      )}
-
-      {canModifySalaries && isFormOpen && (
-        <SalaryForm
-          key={editingSalary ? `edit-salary-${editingSalary.id}` : "create-salary-current"}
-          title={editingSalary ? "Edit Salary" : "Add Salary"}
-          laborIncome={laborIncome}
-          initialValues={editingSalary}
-          submitLabel={editingSalary ? "Save Changes" : "Add Salary"}
-          onCancel={() => {
-            setEditingSalary(null);
-            setIsFormOpen(false);
-            setSearchParams({});
-          }}
-          onSubmit={editingSalary ? handleUpdateSalary : handleCreateSalary}
-        />
-      )}
-
-      <div className="sub-panel toolbar-panel">
-        <div className="record-filter-grid">
-          <label className="field-group">
-            <span>Month Filter</span>
-            <select
-              value={monthFilter}
-              onChange={(event) => {
-                setMonthFilter(event.target.value);
-                setCurrentPage(1);
+          {canModifySalaries && isFormOpen && (
+            <SalaryForm
+              key={editingSalary ? `edit-salary-${editingSalary.id}` : "create-salary-current"}
+              title={editingSalary ? "Edit Salary" : "Add Salary"}
+              laborIncome={laborIncome}
+              initialValues={editingSalary}
+              submitLabel={editingSalary ? "Save Changes" : "Add Salary"}
+              onCancel={() => {
+                setEditingSalary(null);
+                setIsFormOpen(false);
+                setSearchParams({});
               }}
-            >
-              {MONTH_OPTIONS.map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
+              onSubmit={editingSalary ? handleUpdateSalary : handleCreateSalary}
+            />
+          )}
 
-          <label className="field-group">
-            <span>Year Filter</span>
-            <select
-              value={yearFilter}
-              onChange={(event) => {
-                setYearFilter(event.target.value);
-                setCurrentPage(1);
-              }}
-            >
-              {yearOptions.map((value) => (
-                <option key={value} value={value}>
-                  {value === "all" ? "All Years" : value}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </div>
+          <div className="ws-card">
+            <div className="ws-toolbar">
+              <div className="ws-filter-row">
+                <label className="ws-field">
+                  <span className="ws-label">Month Filter</span>
+                  <select
+                    value={monthFilter}
+                    onChange={(event) => {
+                      setMonthFilter(event.target.value);
+                      setCurrentPage(1);
+                    }}
+                  >
+                    {MONTH_OPTIONS.map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-      <RecordToolbar
-        searchValue={searchValue}
-        onSearchChange={(value) => {
-          setSearchValue(value);
-          setCurrentPage(1);
-        }}
-        sortValue={sortValue}
-        onSortChange={(value) => {
-          setSortValue(value);
-          setCurrentPage(1);
-        }}
-        pageSize={pageSize}
-        onPageSizeChange={(value) => {
-          setPageSize(value);
-          setCurrentPage(1);
-        }}
-        searchPlaceholder="Search salary records"
-      />
-
-      {error && <p className="status-message error">{error}</p>}
-      {loading && <p className="status-message">Loading...</p>}
-
-      {!loading && displayedSalaries.length === 0 && !error && (
-        <p className="status-message">No salary records found.</p>
-      )}
-
-      <div className="record-table">
-        <div className="record-table-header simple-table-header">
-          <span>Employee</span>
-          <span>Type</span>
-          <span>Amount</span>
-          <span>Actions</span>
-        </div>
-
-        <ul className="record-list">
-          {currentPageItems.map((item) => (
-            <li key={item.id} className="record-row simple-record-row">
-              <div className="record-cell">
-                <span className="record-primary">{item.employee_name}</span>
+                <label className="ws-field">
+                  <span className="ws-label">Year Filter</span>
+                  <select
+                    value={yearFilter}
+                    onChange={(event) => {
+                      setYearFilter(event.target.value);
+                      setCurrentPage(1);
+                    }}
+                  >
+                    {yearOptions.map((value) => (
+                      <option key={value} value={value}>
+                        {value === "all" ? "All Years" : value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
-              <div className="record-cell">
-                <small>
-                  {item.date} |{" "}
-                  {item.salary_type === "commission"
-                    ? `Commission ${item.commission_percentage}% on labor`
-                    : "Fixed salary"}
-                </small>
+
+              <RecordToolbar
+                searchValue={searchValue}
+                onSearchChange={(value) => {
+                  setSearchValue(value);
+                  setCurrentPage(1);
+                }}
+                sortValue={sortValue}
+                onSortChange={(value) => {
+                  setSortValue(value);
+                  setCurrentPage(1);
+                }}
+                pageSize={pageSize}
+                onPageSizeChange={(value) => {
+                  setPageSize(value);
+                  setCurrentPage(1);
+                }}
+                searchPlaceholder="Search salary records"
+              />
+            </div>
+
+            {error && <p className="ws-msg error">{error}</p>}
+            {loading && <p className="ws-msg">Loading...</p>}
+
+            {!loading && displayedSalaries.length === 0 && !error && (
+              <p className="ws-msg subtle">No salary records found.</p>
+            )}
+
+            <div className="ws-table-scroll">
+              <div className="ws-list-header ws-simple-cols">
+                <span>Employee</span>
+                <span>Type / Date</span>
+                <span>Amount</span>
+                <span>Actions</span>
               </div>
-              <div className="record-cell record-amount-cell">
-                <strong>{formatCurrency(item.amount)}</strong>
-              </div>
-              <div className="record-cell">
-                <div className="record-actions">
-                  {canModifySalaries && (
-                    <>
-                      <button
-                        type="button"
-                        className="secondary-button record-action-button"
-                        onClick={() => {
-                          setEditingSalary(item);
-                          setIsFormOpen(true);
-                          setSearchParams({ create: "1" });
-                        }}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        className="danger-button record-action-button"
-                        onClick={() => handleDeleteSalary(item.id)}
-                      >
-                        Delete
-                      </button>
-                    </>
-                  )}
+
+              <ul className="ws-record-list">
+                {currentPageItems.map((item) => (
+                  <li key={item.id} className="ws-simple-cols">
+                    <div className="ws-record-primary">{item.employee_name}</div>
+                    <div className="ws-record-secondary">
+                      <small>{item.date}</small>
+                      <small>
+                        {item.salary_type === "commission"
+                          ? `Commission ${item.commission_percentage}% on labor`
+                          : "Fixed salary"}
+                      </small>
+                    </div>
+                    <div className="ws-record-amount">
+                      <strong className="ws-amount">{formatCurrency(item.amount)}</strong>
+                    </div>
+                    <div className="ws-record-actions">
+                      {canModifySalaries && (
+                        <>
+                          <button
+                            type="button"
+                            className="ws-btn-ghost ws-btn-sm"
+                            onClick={() => {
+                              setEditingSalary(item);
+                              setIsFormOpen(true);
+                              setSearchParams({ create: "1" });
+                            }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="ws-btn-danger ws-btn-sm"
+                            onClick={() => handleDeleteSalary(item.id)}
+                          >
+                            Delete
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {displayedSalaries.length > 0 && (
+              <div className="ws-pager">
+                <span className="ws-pager-info">
+                  Showing {startIndex + 1}–{Math.min(endIndex, displayedSalaries.length)} of{" "}
+                  {displayedSalaries.length}
+                </span>
+                <div className="ws-pager-controls">
+                  <button
+                    type="button"
+                    className="ws-btn-ghost ws-btn-sm"
+                    disabled={activePage <= 1}
+                    onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                  >
+                    Previous
+                  </button>
+                  <span className="ws-pager-label">
+                    Page {activePage} of {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    className="ws-btn-ghost ws-btn-sm"
+                    disabled={activePage >= totalPages}
+                    onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                  >
+                    Next
+                  </button>
                 </div>
               </div>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {displayedSalaries.length > 0 && (
-        <div className="pagination-bar">
-          <span className="pagination-summary">
-            Showing {startIndex + 1}-{Math.min(endIndex, displayedSalaries.length)} of{" "}
-            {displayedSalaries.length}
-          </span>
-          <div className="pagination-actions">
-            <button
-              type="button"
-              className="secondary-button"
-              disabled={activePage <= 1}
-              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-            >
-              Previous
-            </button>
-            <span className="pagination-page">
-              Page {activePage} of {totalPages}
-            </span>
-            <button
-              type="button"
-              className="secondary-button"
-              disabled={activePage >= totalPages}
-              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-            >
-              Next
-            </button>
+            )}
           </div>
-        </div>
-      )}
         </>
       )}
-    </section>
+    </div>
   );
 }

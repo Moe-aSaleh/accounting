@@ -83,10 +83,7 @@ export default function Settings({
           fallbackMessage: "Failed to load users.",
         });
 
-        if (
-          !isActive ||
-          userData === null
-        ) {
+        if (!isActive || userData === null) {
           return;
         }
 
@@ -316,22 +313,28 @@ export default function Settings({
   };
 
   return (
-    <section className="panel data-panel">
-      <h2 className="section-title">Settings</h2>
+    <div className="ws-page">
+      <div className="ws-page-head">
+        <h2 className="ws-page-title">Settings</h2>
+      </div>
 
       {currentUserRole === null || loading ? (
-        <p className="status-message">Loading...</p>
+        <p className="ws-msg">Loading...</p>
       ) : currentUserRole !== "owner" ? (
-        <p className="status-message error">Only the owner can access settings.</p>
+        <p className="ws-msg error">Only the owner can access settings.</p>
       ) : (
-        <div className="settings-grid">
-          {pageError && <p className="status-message error">{pageError}</p>}
-          <section className="sub-panel">
-            <h3 className="sub-panel-title">Company Profile</h3>
+        <div className="ws-settings-grid">
+          {pageError && <p className="ws-msg error">{pageError}</p>}
 
-            <form className="settings-form" onSubmit={handleSubmit}>
-              <label className="field-group">
-                <span>Business Name</span>
+          {/* Company Profile */}
+          <div className="ws-card">
+            <div className="ws-card-head">
+              <h3 className="ws-card-title">Company Profile</h3>
+            </div>
+
+            <form className="ws-settings-form" onSubmit={handleSubmit}>
+              <label className="ws-field">
+                <span className="ws-label">Business Name</span>
                 <input
                   name="name"
                   value={values.name}
@@ -341,8 +344,8 @@ export default function Settings({
                 />
               </label>
 
-              <label className="field-group">
-                <span>Logo URL</span>
+              <label className="ws-field">
+                <span className="ws-label">Logo URL</span>
                 <input
                   name="logo_url"
                   value={values.logo_url}
@@ -351,8 +354,8 @@ export default function Settings({
                 />
               </label>
 
-              <label className="field-group">
-                <span>Contact Email</span>
+              <label className="ws-field">
+                <span className="ws-label">Contact Email</span>
                 <input
                   name="contact_email"
                   type="email"
@@ -362,8 +365,8 @@ export default function Settings({
                 />
               </label>
 
-              <label className="field-group">
-                <span>Phone</span>
+              <label className="ws-field">
+                <span className="ws-label">Phone</span>
                 <input
                   name="phone"
                   value={values.phone}
@@ -372,8 +375,8 @@ export default function Settings({
                 />
               </label>
 
-              <label className="field-group">
-                <span>Address</span>
+              <label className="ws-field">
+                <span className="ws-label">Address</span>
                 <input
                   name="address"
                   value={values.address}
@@ -382,57 +385,60 @@ export default function Settings({
                 />
               </label>
 
-              <label className="field-group">
-                <span>Currency</span>
-                <select
-                  name="currency"
-                  value={values.currency}
-                  onChange={handleChange}
-                >
+              <label className="ws-field">
+                <span className="ws-label">Currency</span>
+                <select name="currency" value={values.currency} onChange={handleChange}>
                   <option value="AED">AED</option>
                   <option value="USD">USD</option>
                   <option value="EUR">EUR</option>
                 </select>
               </label>
 
-              <div className="record-form-actions">
+              <div className="ws-span-all ws-form-actions">
                 <button type="submit" disabled={saving}>
                   {saving ? "Saving..." : "Save Settings"}
                 </button>
               </div>
             </form>
 
-            {settingsError && <p className="status-message error">{settingsError}</p>}
-            {successMessage && <p className="status-message success">{successMessage}</p>}
-          </section>
+            {settingsError && <p className="ws-msg error">{settingsError}</p>}
+            {successMessage && <p className="ws-msg success">{successMessage}</p>}
+          </div>
 
-          <section className="sub-panel">
-            <h3 className="sub-panel-title">Account</h3>
-            <p className="status-message subtle settings-copy">
-              Use this area for session actions. User roles and permissions can be added next.
+          {/* Account */}
+          <div className="ws-card">
+            <div className="ws-card-head">
+              <h3 className="ws-card-title">Account</h3>
+            </div>
+            <p className="ws-msg subtle" style={{ marginTop: 0, marginBottom: "14px" }}>
+              Session actions and authentication controls.
             </p>
-            <div className="snapshot-list">
-              <div className="snapshot-row">
+            <div className="ws-snapshot">
+              <div className="ws-snapshot-row">
                 <span>Session</span>
                 <strong>Active</strong>
               </div>
-              <div className="snapshot-row">
+              <div className="ws-snapshot-row">
                 <span>Access</span>
                 <strong>Authenticated</strong>
               </div>
             </div>
-            <div className="section-actions compact-actions top-gap">
-              <button type="button" onClick={onLogout}>
+            <div className="ws-form-actions" style={{ marginTop: "16px" }}>
+              <button type="button" className="ws-btn-danger" onClick={onLogout}>
                 Logout
               </button>
             </div>
-          </section>
+          </div>
 
-          <section className="sub-panel">
-            <h3 className="sub-panel-title">Users & Permissions</h3>
-            <form className="settings-user-form" onSubmit={handleCreateUser}>
-              <label className="field-group">
-                <span>Username</span>
+          {/* Users & Permissions */}
+          <div className="ws-card">
+            <div className="ws-card-head">
+              <h3 className="ws-card-title">Users &amp; Permissions</h3>
+            </div>
+
+            <form className="ws-user-form" onSubmit={handleCreateUser}>
+              <label className="ws-field">
+                <span className="ws-label">Username</span>
                 <input
                   name="username"
                   value={newUserValues.username}
@@ -442,8 +448,8 @@ export default function Settings({
                 />
               </label>
 
-              <label className="field-group">
-                <span>Password</span>
+              <label className="ws-field">
+                <span className="ws-label">Password</span>
                 <input
                   name="password"
                   type="password"
@@ -454,13 +460,9 @@ export default function Settings({
                 />
               </label>
 
-              <label className="field-group">
-                <span>Role</span>
-                <select
-                  name="role"
-                  value={newUserValues.role}
-                  onChange={handleNewUserChange}
-                >
+              <label className="ws-field">
+                <span className="ws-label">Role</span>
+                <select name="role" value={newUserValues.role} onChange={handleNewUserChange}>
                   <option value="owner">Owner</option>
                   <option value="accountant">Accountant</option>
                   <option value="staff">Staff</option>
@@ -468,24 +470,24 @@ export default function Settings({
                 </select>
               </label>
 
-              <div className="settings-user-submit">
+              <div className="ws-user-submit">
                 <button type="submit" disabled={creatingUser}>
                   {creatingUser ? "Creating..." : "Create User"}
                 </button>
               </div>
             </form>
 
-            <div className="user-role-list">
+            <div className="ws-user-list">
               {users.map((user) => (
-                <div key={user.id} className="user-role-row">
-                  <div className="user-role-main">
+                <div key={user.id} className="ws-user-row">
+                  <div className="ws-user-info">
                     <strong>{user.username}</strong>
                     <small>
                       Current role: {user.role}
                       {user.username === currentUsername ? " (you)" : ""}
                     </small>
                   </div>
-                  <div className="user-role-actions">
+                  <div className="ws-user-actions">
                     <select
                       value={roleDrafts[user.id] || user.role}
                       onChange={(event) => handleRoleChange(user.id, event.target.value)}
@@ -497,7 +499,7 @@ export default function Settings({
                     </select>
                     <button
                       type="button"
-                      className="secondary-button"
+                      className="ws-btn-ghost ws-btn-sm"
                       disabled={
                         savingRoleId === user.id ||
                         user.username === currentUsername ||
@@ -511,19 +513,23 @@ export default function Settings({
                 </div>
               ))}
             </div>
-            {userError && <p className="status-message error">{userError}</p>}
-            {roleMessage && <p className="status-message success">{roleMessage}</p>}
-          </section>
 
-          <section className="sub-panel">
-            <h3 className="sub-panel-title">Data Maintenance</h3>
-            <p className="status-message subtle settings-copy">
+            {userError && <p className="ws-msg error">{userError}</p>}
+            {roleMessage && <p className="ws-msg success">{roleMessage}</p>}
+          </div>
+
+          {/* Data Maintenance */}
+          <div className="ws-card">
+            <div className="ws-card-head">
+              <h3 className="ws-card-title">Data Maintenance</h3>
+            </div>
+            <p className="ws-msg subtle" style={{ marginTop: 0, marginBottom: "16px" }}>
               Owner-only destructive actions. Please confirm carefully before deleting data.
             </p>
 
-            <div className="settings-user-form">
-              <label className="field-group">
-                <span>Month (YYYY-MM)</span>
+            <div className="ws-user-form">
+              <label className="ws-field">
+                <span className="ws-label">Month (YYYY-MM)</span>
                 <input
                   type="month"
                   value={maintenanceMonth}
@@ -531,10 +537,10 @@ export default function Settings({
                 />
               </label>
 
-              <div className="settings-user-submit">
+              <div className="ws-user-submit">
                 <button
                   type="button"
-                  className="danger-button"
+                  className="ws-btn-danger"
                   onClick={handleClearMonth}
                   disabled={isClearingMonth || isClearingYear}
                 >
@@ -543,9 +549,9 @@ export default function Settings({
               </div>
             </div>
 
-            <div className="settings-user-form">
-              <label className="field-group">
-                <span>Year (YYYY)</span>
+            <div className="ws-user-form" style={{ marginBottom: 0 }}>
+              <label className="ws-field">
+                <span className="ws-label">Year (YYYY)</span>
                 <input
                   type="number"
                   min="1900"
@@ -556,10 +562,10 @@ export default function Settings({
                 />
               </label>
 
-              <div className="settings-user-submit">
+              <div className="ws-user-submit">
                 <button
                   type="button"
-                  className="danger-button"
+                  className="ws-btn-danger"
                   onClick={handleClearYear}
                   disabled={isClearingYear || isClearingMonth}
                 >
@@ -568,11 +574,11 @@ export default function Settings({
               </div>
             </div>
 
-            {maintenanceError && <p className="status-message error">{maintenanceError}</p>}
-            {maintenanceMessage && <p className="status-message success">{maintenanceMessage}</p>}
-          </section>
+            {maintenanceError && <p className="ws-msg error">{maintenanceError}</p>}
+            {maintenanceMessage && <p className="ws-msg success">{maintenanceMessage}</p>}
+          </div>
         </div>
       )}
-    </section>
+    </div>
   );
 }

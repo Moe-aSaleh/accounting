@@ -197,34 +197,33 @@ export default function Dashboard({ onUnauthorized }) {
 
     return maxValue || 1;
   }, [yearOverview]);
+
   const monthHasActivity = hasMonthActivity(summary);
 
   return (
-    <section className="panel data-panel">
-      <div className="dashboard-topbar">
+    <div className="ws-page">
+      <div className="ws-page-head">
         <div>
-          <h2 className="section-title">Dashboard</h2>
-          <p className="status-message subtle dashboard-copy">
-            Compare one month with its full year from the same screen.
-          </p>
+          <h2 className="ws-page-title">Dashboard</h2>
+          <p className="ws-page-desc">Compare one month with its full year from the same screen.</p>
         </div>
 
         {canCreateRecords && (
-          <div className="dashboard-actions">
-            <Link to="/income?create=1" className="action-link-button">
-              Add Income
+          <div className="ws-page-ctas">
+            <Link to="/income?create=1" className="ws-cta-link">
+              + Add Income
             </Link>
-            <Link to="/expense?create=1" className="action-link-button">
-              Add Expense
+            <Link to="/expense?create=1" className="ws-cta-link" style={{ background: "transparent", borderColor: "var(--border-2)", color: "var(--text-2)" }}>
+              + Add Expense
             </Link>
           </div>
         )}
       </div>
 
-      <section className="sub-panel dashboard-filter-panel">
-        <div className="record-filter-grid">
-          <label className="field-group">
-            <span>Year</span>
+      <div className="ws-card">
+        <div className="ws-month-filter-grid">
+          <label className="ws-field">
+            <span className="ws-label">Year</span>
             <select
               value={normalizedYear}
               onChange={(event) => setSelectedYear(event.target.value)}
@@ -237,8 +236,8 @@ export default function Dashboard({ onUnauthorized }) {
             </select>
           </label>
 
-          <label className="field-group">
-            <span>Month</span>
+          <label className="ws-field">
+            <span className="ws-label">Month</span>
             <select
               value={selectedMonthNumber}
               onChange={(event) => setSelectedMonthNumber(event.target.value)}
@@ -251,111 +250,111 @@ export default function Dashboard({ onUnauthorized }) {
             </select>
           </label>
         </div>
-      </section>
+      </div>
 
-      {error && <p className="status-message error">{error}</p>}
+      {error && <p className="ws-msg error">{error}</p>}
 
       {loadingSummary ? (
-        <p className="status-message">Loading...</p>
+        <p className="ws-msg">Loading...</p>
       ) : summary ? (
-        <div className="dashboard-dual-grid">
-          <section className="sub-panel dashboard-side-panel">
-            <div className="chart-panel-header">
-              <h3 className="sub-panel-title">Selected Month</h3>
-              <span className="chart-panel-meta">{summary.month}</span>
+        <div className="ws-dual-grid">
+          <div className="ws-card">
+            <div className="ws-card-head">
+              <h3 className="ws-card-title">Selected Month</h3>
+              <span className="ws-card-meta">{summary.month}</span>
             </div>
 
             {monthHasActivity ? (
-              <div className="summary-grid dashboard-month-grid">
-                <article className="stat-card">
-                  <span className="stat-label">Opening Balance</span>
-                  <strong>{formatCurrency(summary.opening_balance)}</strong>
+              <div className="ws-stats ws-month-stats">
+                <article className="ws-stat">
+                  <span className="ws-stat-label">Opening Balance</span>
+                  <strong className="ws-stat-value">{formatCurrency(summary.opening_balance)}</strong>
                 </article>
-                <article className="stat-card">
-                  <span className="stat-label">Spare Parts</span>
-                  <strong>{formatCurrency(summary.spare_parts_income)}</strong>
+                <article className="ws-stat">
+                  <span className="ws-stat-label">Spare Parts</span>
+                  <strong className="ws-stat-value">{formatCurrency(summary.spare_parts_income)}</strong>
                 </article>
-                <article className="stat-card">
-                  <span className="stat-label">Labor</span>
-                  <strong>{formatCurrency(summary.labor_income)}</strong>
+                <article className="ws-stat">
+                  <span className="ws-stat-label">Labor</span>
+                  <strong className="ws-stat-value">{formatCurrency(summary.labor_income)}</strong>
                 </article>
-                <article className="stat-card">
-                  <span className="stat-label">Income</span>
-                  <strong>{formatCurrency(summary.total_income)}</strong>
+                <article className="ws-stat">
+                  <span className="ws-stat-label">Income</span>
+                  <strong className="ws-stat-value">{formatCurrency(summary.total_income)}</strong>
                 </article>
-                <article className="stat-card">
-                  <span className="stat-label">Expenses</span>
-                  <strong>{formatCurrency(summary.total_expense)}</strong>
+                <article className="ws-stat">
+                  <span className="ws-stat-label">Expenses</span>
+                  <strong className="ws-stat-value">{formatCurrency(summary.total_expense)}</strong>
                 </article>
-                <article className="stat-card">
-                  <span className="stat-label">Salaries</span>
-                  <strong>{formatCurrency(summary.total_salaries)}</strong>
+                <article className="ws-stat">
+                  <span className="ws-stat-label">Salaries</span>
+                  <strong className="ws-stat-value">{formatCurrency(summary.total_salaries)}</strong>
                 </article>
-                <article className="stat-card highlight">
-                  <span className="stat-label">Net Profit</span>
-                  <strong>{formatCurrency(summary.monthly_balance)}</strong>
+                <article className={`ws-stat hl${Number(summary.monthly_balance) < 0 ? " neg" : ""}`}>
+                  <span className="ws-stat-label">Net Profit</span>
+                  <strong className="ws-stat-value">{formatCurrency(summary.monthly_balance)}</strong>
                 </article>
-                <article className="stat-card highlight">
-                  <span className="stat-label">Closing Balance</span>
-                  <strong>{formatCurrency(summary.closing_balance)}</strong>
+                <article className={`ws-stat hl${Number(summary.closing_balance) < 0 ? " neg" : ""}`}>
+                  <span className="ws-stat-label">Closing Balance</span>
+                  <strong className="ws-stat-value">{formatCurrency(summary.closing_balance)}</strong>
                 </article>
               </div>
             ) : (
-              <section className="empty-state-panel">
+              <div className="ws-empty">
                 <h4>No activity recorded</h4>
                 <p>
                   There is no income, expense, or salary activity for {summary.month} yet.
                 </p>
-                <div className="empty-state-metrics">
+                <div className="ws-empty-metrics">
                   <span>Opening Balance: {formatCurrency(summary.opening_balance)}</span>
                   <span>Closing Balance: {formatCurrency(summary.closing_balance)}</span>
                 </div>
-              </section>
+              </div>
             )}
 
             {summary.has_manual_opening_balance && (
-              <p className="status-message subtle">Manual opening balance is active for this month.</p>
+              <p className="ws-msg subtle">Manual opening balance is active for this month.</p>
             )}
-          </section>
+          </div>
 
-          <section className="sub-panel dashboard-side-panel">
-            <div className="chart-panel-header">
-              <h3 className="sub-panel-title">Selected Year</h3>
-              <span className="chart-panel-meta">{normalizedYear}</span>
+          <div className="ws-card">
+            <div className="ws-card-head">
+              <h3 className="ws-card-title">Selected Year</h3>
+              <span className="ws-card-meta">{normalizedYear}</span>
             </div>
 
-            {yearError && <p className="status-message error">{yearError}</p>}
+            {yearError && <p className="ws-msg error">{yearError}</p>}
 
             {loadingYear ? (
-              <p className="status-message">Loading year overview...</p>
+              <p className="ws-msg">Loading year overview...</p>
             ) : yearOverview ? (
               <>
-                <div className="summary-grid dashboard-year-grid">
-                  <article className="stat-card">
-                    <span className="stat-label">Year Income</span>
-                    <strong>{formatCurrency(yearTotals.income)}</strong>
+                <div className="ws-stats ws-year-stats">
+                  <article className="ws-stat">
+                    <span className="ws-stat-label">Year Income</span>
+                    <strong className="ws-stat-value">{formatCurrency(yearTotals.income)}</strong>
                   </article>
-                  <article className="stat-card">
-                    <span className="stat-label">Year Expenses</span>
-                    <strong>{formatCurrency(yearTotals.expenses)}</strong>
+                  <article className="ws-stat">
+                    <span className="ws-stat-label">Year Expenses</span>
+                    <strong className="ws-stat-value">{formatCurrency(yearTotals.expenses)}</strong>
                   </article>
-                  <article className="stat-card">
-                    <span className="stat-label">Year Salaries</span>
-                    <strong>{formatCurrency(yearTotals.salaries)}</strong>
+                  <article className="ws-stat">
+                    <span className="ws-stat-label">Year Salaries</span>
+                    <strong className="ws-stat-value">{formatCurrency(yearTotals.salaries)}</strong>
                   </article>
-                  <article className="stat-card highlight">
-                    <span className="stat-label">Year Net Profit</span>
-                    <strong>{formatCurrency(yearTotals.netProfit)}</strong>
+                  <article className={`ws-stat hl${yearTotals.netProfit < 0 ? " neg" : ""}`}>
+                    <span className="ws-stat-label">Year Net Profit</span>
+                    <strong className="ws-stat-value">{formatCurrency(yearTotals.netProfit)}</strong>
                   </article>
                 </div>
 
-                <section className="sub-panel compact-sub-panel top-gap">
-                  <div className="chart-panel-header">
-                    <h3 className="sub-panel-title">Net Profit Trend</h3>
-                    <span className="chart-panel-meta">{yearOverview.year}</span>
+                <div className="ws-card" style={{ marginTop: "16px", padding: "14px" }}>
+                  <div className="ws-card-head">
+                    <h3 className="ws-card-title">Net Profit Trend</h3>
+                    <span className="ws-card-meta">{yearOverview.year}</span>
                   </div>
 
-                  <div className="year-mini-chart">
+                  <div className="ws-barchart">
                     {yearOverview.months.map((month) => {
                       const value = Number(month.net_profit || 0);
                       const heightPercent = Math.max(
@@ -364,25 +363,25 @@ export default function Dashboard({ onUnauthorized }) {
                       );
 
                       return (
-                        <div key={month.month_key} className="year-mini-bar-group">
+                        <div key={month.month_key} className="ws-bar-col">
                           <div
-                            className="year-mini-track"
+                            className="ws-bar-track"
                             title={`${month.month}: ${formatCurrency(value)}`}
                           >
                             <div
-                              className={value >= 0 ? "year-mini-bar positive" : "year-mini-bar negative"}
+                              className={value >= 0 ? "ws-bar pos" : "ws-bar neg"}
                               style={{ height: `${heightPercent}%` }}
                             />
                           </div>
-                          <span>{month.month.slice(0, 3)}</span>
+                          <span className="ws-bar-lbl">{month.month.slice(0, 3)}</span>
                         </div>
                       );
                     })}
                   </div>
-                </section>
+                </div>
 
-                <div className="report-table-wrap top-gap">
-                  <table className="report-table">
+                <div className="ws-report-wrap" style={{ marginTop: "16px" }}>
+                  <table className="ws-report-table">
                     <thead>
                       <tr>
                         <th>Month</th>
@@ -395,7 +394,7 @@ export default function Dashboard({ onUnauthorized }) {
                         <tr key={month.month_key}>
                           <td>{month.month}</td>
                           <td>{formatCurrency(month.total_income)}</td>
-                          <td>{formatCurrency(month.net_profit)}</td>
+                          <td className={Number(month.net_profit) < 0 ? "ws-td-neg" : ""}>{formatCurrency(month.net_profit)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -403,13 +402,13 @@ export default function Dashboard({ onUnauthorized }) {
                 </div>
               </>
             ) : (
-              <p className="status-message">No year data available.</p>
+              <p className="ws-msg">No year data available.</p>
             )}
-          </section>
+          </div>
         </div>
       ) : (
-        <p className="status-message">No data available.</p>
+        <p className="ws-msg">No data available.</p>
       )}
-    </section>
+    </div>
   );
 }

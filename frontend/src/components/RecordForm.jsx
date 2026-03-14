@@ -53,12 +53,14 @@ export default function RecordForm({
   };
 
   return (
-    <section className="sub-panel">
-      <h3 className="sub-panel-title">{title}</h3>
+    <div className="ws-card">
+      <div className="ws-card-head">
+        <h3 className="ws-card-title">{title}</h3>
+      </div>
 
-      <form className="record-form" onSubmit={handleSubmit}>
-        <label className="field-group">
-          <span>{nameLabel}</span>
+      <form className="ws-form-stack" onSubmit={handleSubmit}>
+        <label className="ws-field">
+          <span className="ws-label">{nameLabel}</span>
           <input
             name={nameKey}
             placeholder={namePlaceholder}
@@ -68,8 +70,8 @@ export default function RecordForm({
           />
         </label>
 
-        <label className="field-group">
-          <span>{amountLabel}</span>
+        <label className="ws-field">
+          <span className="ws-label">{amountLabel}</span>
           <input
             name="amount"
             type="number"
@@ -82,8 +84,8 @@ export default function RecordForm({
           />
         </label>
 
-        <label className="field-group">
-          <span>Date</span>
+        <label className="ws-field">
+          <span className="ws-label">Date</span>
           <input
             name="date"
             type="date"
@@ -93,24 +95,26 @@ export default function RecordForm({
           />
         </label>
 
-        <button type="submit" disabled={submitting}>
-          {submitting ? (
-            <>
-              <span className="button-spinner" aria-hidden="true" />
-              <span>Saving...</span>
-            </>
-          ) : (
-            submitLabel
-          )}
-        </button>
-        {onCancel && (
-          <button type="button" className="secondary-button" onClick={onCancel}>
-            Cancel
+        <div className="ws-form-actions">
+          <button type="submit" disabled={submitting}>
+            {submitting ? (
+              <>
+                <span className="ws-spinner" aria-hidden="true" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              submitLabel
+            )}
           </button>
-        )}
+          {onCancel && (
+            <button type="button" className="ws-btn-ghost" onClick={onCancel}>
+              Cancel
+            </button>
+          )}
+        </div>
       </form>
 
-      {error && <p className="status-message error inline-error">{error}</p>}
-    </section>
+      {error && <p className="ws-msg error">{error}</p>}
+    </div>
   );
 }

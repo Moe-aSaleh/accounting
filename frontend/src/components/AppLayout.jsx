@@ -19,7 +19,7 @@ export default function AppLayout({
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef(null);
   const navClassName = ({ isActive }) =>
-    isActive ? "app-nav-link active" : "app-nav-link";
+    isActive ? "ws-nav-link active" : "ws-nav-link";
   const routeTitle = {
     "/": "Dashboard",
     "/reports": "Reports",
@@ -185,33 +185,33 @@ export default function AppLayout({
   };
 
   return (
-    <div className="app-shell">
+    <div className="ws-shell">
       <div
-        className={isMobileNavOpen ? "app-mobile-nav-overlay open" : "app-mobile-nav-overlay"}
+        className={isMobileNavOpen ? "ws-overlay open" : "ws-overlay"}
         onClick={() => setIsMobileNavOpen(false)}
         aria-hidden={!isMobileNavOpen}
       />
 
-      <aside className={isMobileNavOpen ? "app-sidebar open" : "app-sidebar"}>
-        <div className="app-sidebar-brand">
-          <span className="app-sidebar-badge">
+      <aside className={isMobileNavOpen ? "ws-sidebar open" : "ws-sidebar"}>
+        <div className="ws-brand">
+          <span className="ws-brand-badge">
             {companySettings?.logo_url ? (
               <img
                 src={companySettings.logo_url}
                 alt={companyName}
-                className="app-sidebar-logo"
+                className="ws-brand-logo"
               />
             ) : (
               companyInitials
             )}
           </span>
-          <div>
-            <p className="app-eyebrow">{companyName}</p>
-            <h1 className="app-title">Workspace</h1>
+          <div className="ws-brand-text">
+            <p className="ws-brand-company">{companyName}</p>
+            <h1 className="ws-brand-workspace">Workspace</h1>
           </div>
           <button
             type="button"
-            className="mobile-nav-close"
+            className="ws-nav-close ws-btn-ghost"
             aria-label="Close navigation menu"
             onClick={() => setIsMobileNavOpen(false)}
           >
@@ -219,7 +219,7 @@ export default function AppLayout({
           </button>
         </div>
 
-        <nav className="app-nav" aria-label="Primary">
+        <nav className="ws-nav" aria-label="Primary">
           <NavLink to="/" end className={navClassName}>
             Dashboard
           </NavLink>
@@ -246,31 +246,35 @@ export default function AppLayout({
           )}
         </nav>
 
-        <div className="app-sidebar-footer">
-          <button type="button" onClick={onLogout}>
+        <div className="ws-sidebar-foot">
+          <button
+            type="button"
+            className="ws-btn-ghost ws-btn-wide"
+            onClick={onLogout}
+          >
             Logout
           </button>
         </div>
       </aside>
 
-      <div className="app-main">
-        <header className="app-header">
+      <div className="ws-main">
+        <header className="ws-header">
           <button
             type="button"
-            className="mobile-nav-toggle"
+            className="ws-menu-toggle"
             aria-label={isMobileNavOpen ? "Close navigation menu" : "Open navigation menu"}
             aria-expanded={isMobileNavOpen}
             onClick={() => setIsMobileNavOpen((current) => !current)}
           >
             ☰
           </button>
-          <div>
-            <p className="app-eyebrow">Workspace</p>
-            <h2 className="app-section-title">{routeTitle}</h2>
+          <div className="ws-header-info">
+            <p className="ws-header-breadcrumb">Workspace</p>
+            <h2 className="ws-header-title">{routeTitle}</h2>
           </div>
-          <div className="app-header-actions">
+          <div className="ws-header-actions">
             {canManageProtectedActions && (
-              <NavLink to="/settings" className="app-header-link">
+              <NavLink to="/settings" className="ws-header-link">
                 Profile
               </NavLink>
             )}
@@ -278,17 +282,16 @@ export default function AppLayout({
         </header>
 
         {showReportControls && (
-        <section className="month-panel" aria-label="Report data tools">
-          <div className="month-panel-header">
-            <div className="month-current">
-              <span className="month-current-label">Data Tools</span>
-              <strong>CSV Import & Templates</strong>
+          <div className="ws-import-bar">
+            <div className="ws-import-bar-label">
+              <p>Data Tools</p>
+              <strong>CSV Import &amp; Templates</strong>
             </div>
 
             {canManageProtectedActions && (
               <button
                 type="button"
-                className="secondary-button month-toggle-button"
+                className="ws-btn-ghost ws-btn-sm"
                 onClick={handleImportClick}
                 disabled={isImporting}
               >
@@ -298,7 +301,7 @@ export default function AppLayout({
 
             <button
               type="button"
-              className="secondary-button month-toggle-button"
+              className="ws-btn-ghost ws-btn-sm"
               onClick={handleDownloadTemplate}
             >
               Download Template
@@ -306,7 +309,7 @@ export default function AppLayout({
 
             <button
               type="button"
-              className="secondary-button month-toggle-button"
+              className="ws-btn-ghost ws-btn-sm"
               onClick={handleDownloadArabicTemplate}
             >
               Download Arabic Template
@@ -319,14 +322,21 @@ export default function AppLayout({
               className="hidden-file-input"
               onChange={handleImportChange}
             />
-          </div>
 
-          {importMessage && <p className="status-message success">{importMessage}</p>}
-          {importError && <p className="status-message error">{importError}</p>}
-        </section>
+            {importMessage && (
+              <p className="ws-msg success" style={{ margin: 0 }}>
+                {importMessage}
+              </p>
+            )}
+            {importError && (
+              <p className="ws-msg error" style={{ margin: 0 }}>
+                {importError}
+              </p>
+            )}
+          </div>
         )}
 
-        <main className="app-content">
+        <main className="ws-content">
           <Outlet context={{ currentUserRole }} />
         </main>
       </div>
